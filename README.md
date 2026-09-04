@@ -8,6 +8,9 @@ The system accommodates two primary roles:
 1. **Organiser**: Responsible for creating and managing events, configuring race categories (e.g., 5km, 10km, Half Marathon), and recording race results for participants.
 2. **Participant**: Can browse available events, enroll in specific categories, and view their personal performance history.
 
+## Entity Relationship Diagram
+![RaceDay ERD](docs/ERD.png)
+
 ## CI/CD Validation
 ![CI Build Status](https://via.placeholder.com/600x150.png?text=GitHub+Actions+Build+Passing)
 
