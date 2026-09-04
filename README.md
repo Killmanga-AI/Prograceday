@@ -12,4 +12,4 @@ The system accommodates two primary roles:
 ![CI Build Status](https://via.placeholder.com/600x150.png?text=GitHub+Actions+Build+Passing)
 
 ## Presentation Video
-[Link to unlisted YouTube video] (To be added)
+[![YouTube Video](https://img.shields.io/badge/YouTube-%23FF0000.svg?style=for-the-badge&logo=YouTube&logoColor=white)](YOUR_UNLISTED_YOUTUBE_LINK_HERE)
