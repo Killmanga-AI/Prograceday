@@ -62,7 +62,7 @@ There's a GitHub Actions workflow at `.github/workflows/validate-docs.yml` that 
 
 **Latest build:**
 
-![CI Build Status](docs/ci_build_screenshot.png)
+![CI Build Status](docs/ci-cd%20screenshot.png)
 
 ---
 
