@@ -1,0 +1,39 @@
+name: Validate Docs Structure
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  pull_request:
+
+jobs:
+  validate-docs:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Check for docs folder and required files
+        run: |
+          if [ ! -d "docs" ]; then
+            echo "Error: docs directory does not exist."
+            exit 1
+          fi
+
+          if [ ! -f "docs/API_Endpoint_Plan.md" ] && [ ! -f "docs/API_Endpoint_Plan.pdf" ]; then
+            echo "Error: API_Endpoint_Plan.md or .pdf is missing in docs directory."
+            exit 1
+          fi
+
+          if [ ! -f "docs/ERD.png" ] && [ ! -f "docs/ERD.pdf" ]; then
+            echo "Error: ERD.png or .pdf is missing in docs directory."
+            exit 1
+          fi
+
+          if [ ! -f "docs/database_schema.sql" ]; then
+            echo "Error: database_schema.sql is missing in docs directory."
+            exit 1
+          fi
+
+          echo "All required documents are present in the docs folder."
