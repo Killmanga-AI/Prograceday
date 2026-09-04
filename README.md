@@ -62,7 +62,7 @@ There's a GitHub Actions workflow at `.github/workflows/validate-docs.yml` that 
 
 **Latest build:**
 
-![CI Build Status](https://via.placeholder.com/600x150.png?text=Replace+with+actual+CI+screenshot)
+![CI Build Status](docs/ci_build_screenshot.png)
 
 ---
 
