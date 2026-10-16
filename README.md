@@ -138,6 +138,8 @@ Run locally:
 dotnet test RaceDay.Tests/RaceDay.Tests.csproj --nologo
 ```
 
+A helper script is also included at `scripts/run-local.ps1` for restore, build, and test.
+
 GitHub Actions restores, builds, and runs tests on every push and pull request. The project uses .NET 8 and a test-friendly in-memory database configuration when running under the `Testing` environment.
 
 ## Demo plan
