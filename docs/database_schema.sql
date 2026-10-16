@@ -9,6 +9,9 @@
         script can be re-run cleanly on the same instance.
      3. Creates all six tables with primary keys, foreign keys, and
         NOT NULL / UNIQUE / DEFAULT constraints, matching the ERD.
+        Events additionally store the overall event distance and type
+        required by the Part 2 assessment; category distances remain
+        available for multi-distance events.
      4. Seeds realistic sample data: 2 Organisers, 2 Participants,
         3 Events, categories for each event, sample enrolments,
         and sample captured results.
@@ -69,6 +72,10 @@ CREATE TABLE dbo.Events (
     EventDate       DATETIME NOT NULL,
     Location        VARCHAR(200) NOT NULL,
     RouteInfo       VARCHAR(500) NULL,
+    EventDistanceKm DECIMAL(6,2) NOT NULL
+        CONSTRAINT CK_Events_EventDistanceKm CHECK (EventDistanceKm > 0),
+    EventType       VARCHAR(10) NOT NULL
+        CONSTRAINT CK_Events_EventType CHECK (EventType IN ('Run', 'Walk', 'Cycle')),
     CreatedAt       DATETIME NOT NULL DEFAULT GETDATE(),
     CONSTRAINT FK_Events_Users FOREIGN KEY (OrganiserId) REFERENCES dbo.Users(UserId)
 );
@@ -83,7 +90,8 @@ CREATE TABLE dbo.Categories (
     EventId         INT NOT NULL,
     CategoryName    VARCHAR(50) NOT NULL,
     DistanceKm      DECIMAL(5,2) NOT NULL,
-    MaxParticipants INT NOT NULL DEFAULT 100,
+    MaxParticipants INT NOT NULL DEFAULT 100
+        CONSTRAINT CK_Categories_MaxParticipants CHECK (MaxParticipants > 0),
     CONSTRAINT FK_Categories_Events FOREIGN KEY (EventId) REFERENCES dbo.Events(EventId)
 );
 GO
@@ -112,8 +120,10 @@ GO
 CREATE TABLE dbo.Results (
     ResultId            INT IDENTITY(1,1) PRIMARY KEY,
     EnrolmentId         INT NOT NULL UNIQUE,
-    FinishTime          TIME NOT NULL,
-    [Position]          INT NULL,
+    FinishTime          TIME NOT NULL
+        CONSTRAINT CK_Results_FinishTime CHECK (FinishTime > '00:00:00'),
+    [Position]          INT NULL
+        CONSTRAINT CK_Results_Position CHECK ([Position] IS NULL OR [Position] > 0),
     RecordedByUserId    INT NOT NULL,
     RecordedAt          DATETIME NOT NULL DEFAULT GETDATE(),
     CONSTRAINT FK_Results_Enrolments FOREIGN KEY (EnrolmentId) REFERENCES dbo.Enrolments(EnrolmentId),
@@ -130,6 +140,9 @@ INSERT INTO dbo.Roles (RoleName) VALUES ('Organiser'), ('Participant');
 GO
 
 -- Users: 2 Organisers, 2 Participants
+-- These HASHED_PASSWORD_* values are Part 1 placeholders, not valid password
+-- hashes. The sample accounts cannot authenticate to the API; register real
+-- development accounts through POST /api/auth/register instead.
 INSERT INTO dbo.Users (RoleId, FullName, Email, PasswordHash)
 VALUES
 ((SELECT RoleId FROM dbo.Roles WHERE RoleName = 'Organiser'), 'Thandeka Mokoena', 'thandeka@raceday.co.za', 'HASHED_PASSWORD_1'),
@@ -139,17 +152,17 @@ VALUES
 GO
 
 -- Events: 3 events, owned by the two Organisers
-INSERT INTO dbo.Events (OrganiserId, EventName, Description, EventDate, Location, RouteInfo)
+INSERT INTO dbo.Events (OrganiserId, EventName, Description, EventDate, Location, RouteInfo, EventDistanceKm, EventType)
 VALUES
 ((SELECT UserId FROM dbo.Users WHERE Email = 'thandeka@raceday.co.za'),
  'Cape Town Park Run Challenge', 'A community park run through Green Point.',
- '2026-10-10 07:00:00', 'Green Point, Cape Town', 'Flat 5km loop around the Green Point Urban Park.'),
+ '2026-10-10 07:00:00', 'Green Point, Cape Town', 'Flat 5km loop around the Green Point Urban Park.', 5.00, 'Run'),
 ((SELECT UserId FROM dbo.Users WHERE Email = 'thandeka@raceday.co.za'),
  'Durban Beachfront Marathon', 'Scenic marathon along the Durban beachfront.',
- '2026-11-15 06:00:00', 'Durban Beachfront', 'Coastal out-and-back route, mostly flat with sea views.'),
+ '2026-11-15 06:00:00', 'Durban Beachfront', 'Coastal out-and-back route, mostly flat with sea views.', 42.20, 'Run'),
 ((SELECT UserId FROM dbo.Users WHERE Email = 'johan@raceday.co.za'),
  'Joburg Hills Cycle Tour', 'A challenging cycling tour through the Johannesburg hills.',
- '2026-09-20 06:30:00', 'Sandton, Johannesburg', 'Hilly 40km loop with three major climbs.');
+ '2026-09-20 06:30:00', 'Sandton, Johannesburg', 'Hilly 40km loop with three major climbs.', 40.00, 'Cycle');
 GO
 
 -- Categories: at least one per event

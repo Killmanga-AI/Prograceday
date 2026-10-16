@@ -1,7 +1,6 @@
 name: RaceDay API CI
 on:
   push:
-    branches: [main, "part-2/**"]
   pull_request:
     branches: [main]
   workflow_dispatch:
@@ -16,8 +15,8 @@ jobs:
         with:
           dotnet-version: 8.0.x
       - name: Restore
-        run: dotnet restore RaceDay.Api/RaceDay.Api.csproj && dotnet restore RaceDay.Tests/RaceDay.Tests.csproj
+        run: dotnet restore RaceDay.Tests/RaceDay.Tests.csproj
       - name: Build
-        run: dotnet build RaceDay.Api/RaceDay.Api.csproj --configuration Release --no-restore
+        run: dotnet build RaceDay.Tests/RaceDay.Tests.csproj --configuration Release --no-restore
       - name: Test
-        run: dotnet test RaceDay.Tests/RaceDay.Tests.csproj --configuration Release
+        run: dotnet test RaceDay.Tests/RaceDay.Tests.csproj --configuration Release --no-build --no-restore

@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using System.Reflection;
 using RaceDay.Api.Data;
 using RaceDay.Api.Models;
 using RaceDay.Api.Services;
@@ -13,18 +14,21 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c => {
     c.SwaggerDoc("v1", new OpenApiInfo { Title = "RaceDay API", Version = "v1", Description = "Event management API for organisers and participants." });
+    var xmlFile = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";
+    c.IncludeXmlComments(Path.Combine(AppContext.BaseDirectory, xmlFile), includeControllerXmlComments: true);
     c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme { Name = "Authorization", Type = SecuritySchemeType.Http, Scheme = "bearer", BearerFormat = "JWT", In = ParameterLocation.Header, Description = "Paste the access token returned by /api/auth/login." });
-    c.AddSecurityRequirement(new OpenApiSecurityRequirement { { new OpenApiSecurityScheme { Reference = new OpenApiReference { Type = ReferenceType.SecurityScheme, Id = "Bearer" } }, Array.Empty<string>() } });
+    c.OperationFilter<RaceDay.Api.Swagger.AuthorizeCheckOperationFilter>();
 });
 
 var useInMemoryDatabase = builder.Configuration.GetValue<bool>("UseInMemoryDatabase") || builder.Environment.IsEnvironment("Testing");
+var inMemoryDatabaseName = builder.Configuration["InMemoryDatabaseName"] ?? "RaceDayDb";
 var connection = builder.Configuration.GetConnectionString("RaceDay") ?? "Server=(localdb)\\MSSQLLocalDB;Database=RaceDayDB;Trusted_Connection=True;TrustServerCertificate=True;";
 
 builder.Services.AddDbContext<RaceDayContext>(options =>
 {
     if (useInMemoryDatabase)
     {
-        options.UseInMemoryDatabase("RaceDayDb");
+        options.UseInMemoryDatabase(inMemoryDatabaseName);
     }
     else
     {
@@ -32,7 +36,15 @@ builder.Services.AddDbContext<RaceDayContext>(options =>
     }
 });
 
-var jwtKey = builder.Configuration["Jwt:Key"] ?? "DEV_ONLY_CHANGE_THIS_KEY_TO_A_LONG_RANDOM_SECRET_2026";
+var jwtKey = builder.Configuration["Jwt:Key"];
+if (string.IsNullOrWhiteSpace(jwtKey) && builder.Environment.IsEnvironment("Testing"))
+{
+    jwtKey = "TEST_ONLY_SIGNING_KEY_FOR_AUTOMATED_TESTS_2026";
+}
+if (string.IsNullOrWhiteSpace(jwtKey) || jwtKey.Length < 32)
+{
+    throw new InvalidOperationException("Configure Jwt:Key with a secret containing at least 32 characters.");
+}
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer(o => {
     o.TokenValidationParameters = new TokenValidationParameters
     {
@@ -59,10 +71,6 @@ using (var scope = app.Services.CreateScope())
     {
         db.Database.EnsureCreated();
     }
-    else
-    {
-        db.Database.Migrate();
-    }
 
     var allowedRoles = new[] { "Organiser", "Participant" };
     var seededRoles = await db.Roles.Select(x => x.RoleName).ToListAsync();
@@ -77,7 +85,7 @@ using (var scope = app.Services.CreateScope())
     await db.SaveChangesAsync();
 }
 
-if (app.Environment.IsDevelopment())
+if (app.Environment.IsDevelopment() || app.Environment.IsEnvironment("Testing"))
 {
     app.UseSwagger();
     app.UseSwaggerUI();

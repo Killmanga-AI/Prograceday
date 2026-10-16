@@ -4,7 +4,7 @@
 
 RaceDay is a web-based event management platform built for the South African road running, walking, and cycling community. The idea is pretty straightforward — right now a lot of events are still managed through spreadsheets and WhatsApp groups, which is a mess for both organisers and participants. RaceDay fixes that by giving organisers a proper system to create events and capture results, while participants can browse events, sign up, and track how they're doing over time.
 
-This repo covers Part 1 of the POE, which focuses on system planning and the database design. No API code yet — that comes in Part 2.
+This repository preserves the Part 1 planning documents and adds the Part 2 API implementation.
 
 ---
 
@@ -15,7 +15,7 @@ The system is built around two types of users:
 - Organiser — someone who runs events. They can create and manage events, add race categories (like a 5km or 10km option), view who's signed up, and capture finish times and positions after the race.
 - Participant — someone who enters events. They can browse what's on, enrol in a category, cancel their entry, and check their own results and history.
 
-Role-based access will be enforced at the API level in Part 2.
+Role-based access is enforced at the API level.
 
 ---
 
@@ -24,6 +24,8 @@ Role-based access will be enforced at the API level in Part 2.
 ![RaceDay ERD](docs/ERD.png)
 
 The database has 6 tables: `Roles`, `Users`, `Events`, `Categories`, `Enrolments`, and `Results`. Users play different roles depending on context — the same `Users` table covers both Organisers and Participants, distinguished by a `RoleId` foreign key. The `Enrolments` table acts as a junction between `Users` (as Participants) and `Categories`, and `Results` is linked one-to-one with `Enrolments` since each race entry can only have one captured result.
+
+Part 2 adds `EventDistanceKm` and `EventType` to the existing `Events` table without adding tables. See [the Part 2 schema addendum](docs/part-2-schema-addendum.md). The existing Part 1 ERD is retained as the original planning artifact.
 
 ---
 
@@ -38,6 +40,8 @@ To get the database running locally:
 
 > Note: The script targets SQL Server. It won't work as-is on MySQL or PostgreSQL.
 
+The Part 1 SQL seed user's `HASHED_PASSWORD_*` fields are placeholders, not usable password hashes. They cannot log in to the API; create API accounts with `/api/auth/register`.
+
 ---
 
 ## Docs Folder
@@ -49,6 +53,7 @@ All planning documents are in the `/docs` folder:
 | `ERD.png` | Entity Relationship Diagram showing all 6 tables |
 | `API_Endpoint_Plan.md` | Full list of 20 planned API endpoints across all functional areas |
 | `database_schema.sql` | SQL Server script with schema + seed data |
+| `part-2-schema-addendum.md` | Documents the additive Part 2 event distance/type columns |
 
 ---
 
@@ -56,9 +61,11 @@ All planning documents are in the `/docs` folder:
 
 There's a GitHub Actions workflow at `.github/workflows/validate-docs.yml` that automatically checks the repo structure on every push. It confirms that the `/docs` folder exists and contains all three required files.
 
-**Latest build:**
+The image below is the existing Part 1 documentation-workflow screenshot; it is not evidence of a Part 2 API build.
 
 ![CI Build Status](docs/ci-cd%20screenshot.png)
+
+The Part 2 API workflow is `.github/workflows/dotnet.yml`. Its first successful remote run still needs to be verified and captured before submission.
 
 ---
 
@@ -87,17 +94,23 @@ ASP.NET Core 8 Web API for the RaceDay event platform. This implementation follo
 ## Configure and run
 
 1. Copy `RaceDay.Api/appsettings.Development.json.example` to `RaceDay.Api/appsettings.Development.json`.
-2. Update `ConnectionStrings:RaceDay` and the JWT secret.
-3. Install EF Core tooling if needed: `dotnet tool install --global dotnet-ef --version 8.0.11`.
-4. Create and apply the initial migration:
+2. Update `ConnectionStrings:RaceDay`. Keep signing secrets out of JSON files and source control.
+3. Set a local signing secret using user secrets:
    ```bash
-   dotnet ef migrations add InitialCreate --project RaceDay.Api/RaceDay.Api.csproj --startup-project RaceDay.Api/RaceDay.Api.csproj
+   dotnet user-secrets init --project RaceDay.Api/RaceDay.Api.csproj
+   dotnet user-secrets set "Jwt:Key" "replace-this-with-a-random-secret-of-at-least-32-characters" --project RaceDay.Api/RaceDay.Api.csproj
+   ```
+   The API fails startup if no valid signing key is configured. This example value is a placeholder; do not use it as a real secret.
+4. Install EF Core tooling if needed: `dotnet tool install --global dotnet-ef --version 8.0.11`.
+5. Apply the checked-in migrations to a new or correctly baselined database:
+   ```bash
    dotnet ef database update --project RaceDay.Api/RaceDay.Api.csproj --startup-project RaceDay.Api/RaceDay.Api.csproj
    ```
-5. Start the API: `dotnet run --project RaceDay.Api/RaceDay.Api.csproj`.
-6. Open the Swagger UI at `/swagger`.
+   Do not run `docs/database_schema.sql` against an existing database: it drops and recreates the six tables. A database previously created from that script has no EF migration history; back it up and baseline it deliberately before using EF migrations.
+6. Start the API: `dotnet run --project RaceDay.Api/RaceDay.Api.csproj`.
+7. Open the Swagger UI at `/swagger`.
 
-The development JWT fallback is only for local evaluation. Do not deploy it. Swagger UI is enabled in Development; set `ASPNETCORE_ENVIRONMENT=Development` while recording the assessment demonstration.
+The API seeds the two allowed roles after the database schema is available. Public registration permits either `Organiser` or `Participant` because the approved Part 1 plan explicitly allows role selection. This means public users can self-register as organisers; production deployments should add an organiser approval/invitation process.
 
 ## Endpoints
 
@@ -128,7 +141,7 @@ The development JWT fallback is only for local evaluation. Do not deploy it. Swa
 4. Click **Authorize** in Swagger and paste the token (the Swagger security scheme is HTTP Bearer).
 5. Try the endpoints for the role you registered. A request with the wrong role should return `403 Forbidden`; a request without a token should return `401 Unauthorized`.
 
-Passwords are stored using ASP.NET Core's `PasswordHasher<TUser>`, not plaintext. JWTs include the user's ID and role, expire after two hours, and are signed with the configured key. Registration accepts only the two allowed role names. Event/category/result operations check ownership on the server, not only in the UI.
+Passwords are stored using ASP.NET Core's `PasswordHasher<TUser>`, not plaintext. After login, a signed JWT acts as the authenticated session credential on subsequent requests; it includes the user's ID and role, expires after two hours, and is validated for issuer, audience, lifetime, and signature. Registration accepts only the two allowed role names. Event/category/result operations check ownership on the server, not only in the UI. Event records include a positive event distance and an event type of `Run`, `Walk`, or `Cycle`; category distances remain separate to support multi-category events.
 
 ## Tests and CI
 
@@ -140,7 +153,7 @@ dotnet test RaceDay.Tests/RaceDay.Tests.csproj --nologo
 
 A helper script is also included at `scripts/run-local.ps1` for restore, build, and test.
 
-GitHub Actions restores, builds, and runs tests on every push and pull request. The project uses .NET 8 and a test-friendly in-memory database configuration when running under the `Testing` environment.
+GitHub Actions restores, builds, and runs tests on every push and pull request. The project uses .NET 8 and an isolated test-only in-memory database. InMemory tests do not prove SQL Server locking, migration execution, or SQL Server constraint behavior; those still require verification against a SQL Server instance.
 
 ## Demo plan
 
@@ -155,12 +168,14 @@ GitHub Actions restores, builds, and runs tests on every push and pull request. 
 
 ## Submission checklist
 
-- [x] Preserve Part 1 ERD and SQL documentation
+- [x] Preserve Part 1 ERD and planning documentation; document the additive event fields
 - [x] Keep the existing docs validation workflow
 - [x] Build the .NET 8 API and tests
 - [x] Add authentication and authorization
 - [x] Add event, category, enrolment, and result endpoints
-- [x] Add tests covering auth boundaries and smoke checks
+- [x] Add tests for registration/login, role restrictions, event ownership, enrolments, and result recording
+- [x] Apply both EF migrations to a temporary LocalDB and discard only that verification database
+- [ ] Verify SQL Server concurrency behavior under simultaneous enrolment requests
 - [ ] Add the final public GitHub Actions build screenshot when available
 - [ ] Add the final unlisted YouTube URL when supplied
 
