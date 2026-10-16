@@ -24,8 +24,8 @@
 |---|---|---|---|---|---|
 | GET | /api/events | Lists all events so Participants can browse upcoming events. | Any | None | 200 OK – array of events. |
 | GET | /api/events/{id} | Returns full details for a single event, including route info. | Any | None | 200 OK – event object. 404 Not Found. |
-| POST | /api/events | Creates a new event. | Organiser | { eventName, description, eventDate, location, routeInfo } | 201 Created – event object. 400 Bad Request. |
-| PUT | /api/events/{id} | Updates an event the Organiser owns. | Organiser (owner) | { eventName, description, eventDate, location, routeInfo } | 200 OK – updated event. 403 Forbidden. 404 Not Found. |
+| POST | /api/events | Creates a new event. | Organiser | { eventName, description, eventDate, location, routeInfo, eventDistanceKm, eventType } | 201 Created – event object. 400 Bad Request. |
+| PUT | /api/events/{id} | Updates an event the Organiser owns. | Organiser (owner) | { eventName, description, eventDate, location, routeInfo, eventDistanceKm, eventType } | 200 OK – updated event. 403 Forbidden. 404 Not Found. |
 | DELETE | /api/events/{id} | Deletes an event the Organiser owns. | Organiser (owner) | None | 204 No Content. 403 Forbidden. 404 Not Found. |
 
 ## Categories

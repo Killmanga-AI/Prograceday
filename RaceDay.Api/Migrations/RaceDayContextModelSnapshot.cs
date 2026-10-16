@@ -32,24 +32,29 @@ namespace RaceDay.Api.Migrations
 
                     b.Property<string>("CategoryName")
                         .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
+                        .HasColumnType("varchar(50)");
 
                     b.Property<decimal>("DistanceKm")
-                        .HasPrecision(5, 2)
                         .HasColumnType("decimal(5,2)");
 
                     b.Property<int>("EventId")
                         .HasColumnType("int");
 
                     b.Property<int>("MaxParticipants")
-                        .HasColumnType("int");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(100);
 
                     b.HasKey("CategoryId");
 
                     b.HasIndex("EventId");
 
-                    b.ToTable("Categories", (string)null);
+                    b.ToTable("Categories", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_Categories_DistanceKm", "[DistanceKm] > 0");
+
+                            t.HasCheckConstraint("CK_Categories_MaxParticipants", "[MaxParticipants] > 0");
+                        });
                 });
 
             modelBuilder.Entity("RaceDay.Api.Models.Enrolment", b =>
@@ -64,15 +69,18 @@ namespace RaceDay.Api.Migrations
                         .HasColumnType("int");
 
                     b.Property<DateTime>("EnrolmentDate")
-                        .HasColumnType("datetime2");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime")
+                        .HasDefaultValueSql("GETDATE()");
 
                     b.Property<int>("ParticipantId")
                         .HasColumnType("int");
 
                     b.Property<string>("Status")
                         .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("varchar(20)")
+                        .HasDefaultValue("Registered");
 
                     b.HasKey("EnrolmentId");
 
@@ -93,37 +101,47 @@ namespace RaceDay.Api.Migrations
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("EventId"));
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime")
+                        .HasDefaultValueSql("GETDATE()");
 
                     b.Property<string>("Description")
-                        .HasMaxLength(1000)
-                        .HasColumnType("nvarchar(1000)");
+                        .HasColumnType("varchar(1000)");
 
                     b.Property<DateTime>("EventDate")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("datetime");
+
+                    b.Property<decimal>("EventDistanceKm")
+                        .HasColumnType("decimal(6,2)");
 
                     b.Property<string>("EventName")
                         .IsRequired()
-                        .HasMaxLength(150)
-                        .HasColumnType("nvarchar(150)");
+                        .HasColumnType("varchar(150)");
+
+                    b.Property<string>("EventType")
+                        .IsRequired()
+                        .HasColumnType("varchar(10)");
 
                     b.Property<string>("Location")
                         .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
+                        .HasColumnType("varchar(200)");
 
                     b.Property<int>("OrganiserId")
                         .HasColumnType("int");
 
                     b.Property<string>("RouteInfo")
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
+                        .HasColumnType("varchar(500)");
 
                     b.HasKey("EventId");
 
                     b.HasIndex("OrganiserId");
 
-                    b.ToTable("Events", (string)null);
+                    b.ToTable("Events", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_Events_EventDistanceKm", "[EventDistanceKm] > 0");
+
+                            t.HasCheckConstraint("CK_Events_EventType", "[EventType] IN ('Run', 'Walk', 'Cycle')");
+                        });
                 });
 
             modelBuilder.Entity("RaceDay.Api.Models.Result", b =>
@@ -144,7 +162,9 @@ namespace RaceDay.Api.Migrations
                         .HasColumnType("int");
 
                     b.Property<DateTime>("RecordedAt")
-                        .HasColumnType("datetime2");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime")
+                        .HasDefaultValueSql("GETDATE()");
 
                     b.Property<int>("RecordedByUserId")
                         .HasColumnType("int");
@@ -156,7 +176,12 @@ namespace RaceDay.Api.Migrations
 
                     b.HasIndex("RecordedByUserId");
 
-                    b.ToTable("Results", (string)null);
+                    b.ToTable("Results", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_Results_FinishTime", "[FinishTime] > '00:00:00'");
+
+                            t.HasCheckConstraint("CK_Results_Position", "[Position] IS NULL OR [Position] > 0");
+                        });
                 });
 
             modelBuilder.Entity("RaceDay.Api.Models.Role", b =>
@@ -169,8 +194,7 @@ namespace RaceDay.Api.Migrations
 
                     b.Property<string>("RoleName")
                         .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
+                        .HasColumnType("varchar(20)");
 
                     b.HasKey("RoleId");
 
@@ -189,22 +213,21 @@ namespace RaceDay.Api.Migrations
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("UserId"));
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime")
+                        .HasDefaultValueSql("GETDATE()");
 
                     b.Property<string>("Email")
                         .IsRequired()
-                        .HasMaxLength(150)
-                        .HasColumnType("nvarchar(150)");
+                        .HasColumnType("varchar(150)");
 
                     b.Property<string>("FullName")
                         .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                        .HasColumnType("varchar(100)");
 
                     b.Property<string>("PasswordHash")
                         .IsRequired()
-                        .HasMaxLength(255)
-                        .HasColumnType("nvarchar(255)");
+                        .HasColumnType("varchar(255)");
 
                     b.Property<int>("RoleId")
                         .HasColumnType("int");
@@ -224,7 +247,7 @@ namespace RaceDay.Api.Migrations
                     b.HasOne("RaceDay.Api.Models.Event", "Event")
                         .WithMany("Categories")
                         .HasForeignKey("EventId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.Navigation("Event");
@@ -235,7 +258,7 @@ namespace RaceDay.Api.Migrations
                     b.HasOne("RaceDay.Api.Models.Category", "Category")
                         .WithMany("Enrolments")
                         .HasForeignKey("CategoryId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.HasOne("RaceDay.Api.Models.User", "Participant")
@@ -265,7 +288,7 @@ namespace RaceDay.Api.Migrations
                     b.HasOne("RaceDay.Api.Models.Enrolment", "Enrolment")
                         .WithOne("Result")
                         .HasForeignKey("RaceDay.Api.Models.Result", "EnrolmentId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.HasOne("RaceDay.Api.Models.User", "RecordedBy")
@@ -284,7 +307,7 @@ namespace RaceDay.Api.Migrations
                     b.HasOne("RaceDay.Api.Models.Role", "Role")
                         .WithMany("Users")
                         .HasForeignKey("RoleId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.Navigation("Role");
