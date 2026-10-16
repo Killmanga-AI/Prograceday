@@ -1,0 +1,17 @@
+{
+  "ConnectionStrings": {
+    "RaceDay": "Server=localhost;Database=RaceDayDB;Trusted_Connection=True;TrustServerCertificate=True;"
+  },
+  "Jwt": {
+    "Issuer": "RaceDay",
+    "Audience": "RaceDayClients",
+    "Key": "replace-with-a-long-random-development-secret-at-least-32-characters"
+  },
+  "UseInMemoryDatabase": false,
+  "Logging": {
+    "LogLevel": {
+      "Default": "Information",
+      "Microsoft.AspNetCore": "Warning"
+    }
+  }
+}
