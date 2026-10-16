@@ -64,7 +64,9 @@ The image below is the existing Part 1 documentation-workflow screenshot; it is 
 
 ![CI Build Status](docs/ci-cd%20screenshot.png)
 
-The Part 2 API workflow is `.github/workflows/dotnet.yml`. Its first successful remote run still needs to be verified and captured before submission.
+The Part 2 API workflow is `.github/workflows/dotnet.yml`. Its successful `build-and-test` run is captured below; [view the run on GitHub](https://github.com/Killmanga-AI/Prograceday/actions/runs/38971200076).
+
+![RaceDay API GitHub Actions build and test success](docs/raceday-api-ci-success.png)
 
 ---
 
@@ -175,7 +177,7 @@ The `.github/workflows/dotnet.yml` workflow restores, builds, and runs tests on 
 - [x] Add tests for registration/login, role restrictions, event ownership, enrolments, and result recording
 - [x] Apply both EF migrations to a temporary LocalDB and discard only that verification database
 - [ ] Verify SQL Server concurrency behavior under simultaneous enrolment requests
-- [ ] Add the final public GitHub Actions build screenshot when available
+- [x] Add the successful public GitHub Actions build screenshot
 - [ ] Add the final unlisted YouTube URL when supplied
 
 ## Assessment note
