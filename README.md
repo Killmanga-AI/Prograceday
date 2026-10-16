@@ -25,7 +25,7 @@ Role-based access is enforced at the API level.
 
 The database has 6 tables: `Roles`, `Users`, `Events`, `Categories`, `Enrolments`, and `Results`. Users play different roles depending on context — the same `Users` table covers both Organisers and Participants, distinguished by a `RoleId` foreign key. The `Enrolments` table acts as a junction between `Users` (as Participants) and `Categories`, and `Results` is linked one-to-one with `Enrolments` since each race entry can only have one captured result.
 
-Part 2 adds `EventDistanceKm` and `EventType` to the existing `Events` table without adding tables. See [the Part 2 schema addendum](docs/part-2-schema-addendum.md). The existing Part 1 ERD is retained as the original planning artifact.
+Part 2 retains the six Part 1 tables and relationships and adds `EventDistanceKm DECIMAL(6,2)` and `EventType VARCHAR(10)` to `Events` to satisfy the API requirements. Event distance must be positive and event type must be `Run`, `Walk`, or `Cycle`. Category `DistanceKm` remains separate for events that offer multiple distances. The Part 1 ERD is preserved unchanged as the original planning artifact; the SQL script and EF model include the Part 2 fields.
 
 ---
 
@@ -53,13 +53,12 @@ All planning documents are in the `/docs` folder:
 | `ERD.png` | Entity Relationship Diagram showing all 6 tables |
 | `API_Endpoint_Plan.md` | Full list of 20 planned API endpoints across all functional areas |
 | `database_schema.sql` | SQL Server script with schema + seed data |
-| `part-2-schema-addendum.md` | Documents the additive Part 2 event distance/type columns |
 
 ---
 
 ## CI/CD
 
-There's a GitHub Actions workflow at `.github/workflows/validate-docs.yml` that automatically checks the repo structure on every push. It confirms that the `/docs` folder exists and contains all three required files.
+There's a GitHub Actions workflow at `.github/workflows/validate-docs.yml` that checks the repo structure on pushes to `main`/`master` and on pull requests. It confirms that the `/docs` folder exists and contains the required Part 1 files.
 
 The image below is the existing Part 1 documentation-workflow screenshot; it is not evidence of a Part 2 API build.
 
@@ -106,7 +105,7 @@ ASP.NET Core 8 Web API for the RaceDay event platform. This implementation follo
    ```bash
    dotnet ef database update --project RaceDay.Api/RaceDay.Api.csproj --startup-project RaceDay.Api/RaceDay.Api.csproj
    ```
-   Do not run `docs/database_schema.sql` against an existing database: it drops and recreates the six tables. A database previously created from that script has no EF migration history; back it up and baseline it deliberately before using EF migrations.
+   Do not run `docs/database_schema.sql` against an existing database: it drops and recreates the six tables. A database previously created from that script has no EF migration history; back it up and baseline it deliberately before using EF migrations. The Part 2 migration backfills event distance from the largest existing category distance where possible, or `1.00` otherwise. It infers `Cycle` or `Walk` from event names and treats other existing events as `Run`; review these inferred values for existing data.
 6. Start the API: `dotnet run --project RaceDay.Api/RaceDay.Api.csproj`.
 7. Open the Swagger UI at `/swagger`.
 
@@ -153,7 +152,7 @@ dotnet test RaceDay.Tests/RaceDay.Tests.csproj --nologo
 
 A helper script is also included at `scripts/run-local.ps1` for restore, build, and test.
 
-GitHub Actions restores, builds, and runs tests on every push and pull request. The project uses .NET 8 and an isolated test-only in-memory database. InMemory tests do not prove SQL Server locking, migration execution, or SQL Server constraint behavior; those still require verification against a SQL Server instance.
+The `.github/workflows/dotnet.yml` workflow restores, builds, and runs tests on every push and pull request. The project uses .NET 8 and an isolated test-only in-memory database. InMemory tests do not prove SQL Server locking, migration execution, or SQL Server constraint behavior; test the API against your SQL Server instance before final submission.
 
 ## Demo plan
 
