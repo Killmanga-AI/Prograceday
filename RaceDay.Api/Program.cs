@@ -64,15 +64,17 @@ using (var scope = app.Services.CreateScope())
         db.Database.Migrate();
     }
 
-    if (!await db.Roles.AnyAsync())
+    var allowedRoles = new[] { "Organiser", "Participant" };
+    var seededRoles = await db.Roles.Select(x => x.RoleName).ToListAsync();
+    foreach (var roleName in allowedRoles)
     {
-        db.Roles.AddRange(new[]
+        if (!seededRoles.Contains(roleName, StringComparer.OrdinalIgnoreCase))
         {
-            new Role { RoleName = "Organiser" },
-            new Role { RoleName = "Participant" }
-        });
-        await db.SaveChangesAsync();
+            db.Roles.Add(new Role { RoleName = roleName });
+        }
     }
+
+    await db.SaveChangesAsync();
 }
 
 if (app.Environment.IsDevelopment())
