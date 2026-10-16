@@ -75,6 +75,45 @@ public sealed class AuthAndAccessTests : IClassFixture<WebApplicationFactory<Pro
     }
 
     [Fact]
+    public async Task InvalidRole_ReturnsBadRequest()
+    {
+        using var client = _factory.CreateClient();
+
+        var response = await client.PostAsJsonAsync("/api/auth/register", new
+        {
+            fullName = "Bad Role User",
+            email = $"invalid-role-{Guid.NewGuid():N}@example.com",
+            password = "Password123!",
+            role = "Admin"
+        });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task InvalidCredentials_ReturnUnauthorized()
+    {
+        using var client = _factory.CreateClient();
+        var email = $"bad-login-{Guid.NewGuid():N}@example.com";
+
+        await client.PostAsJsonAsync("/api/auth/register", new
+        {
+            fullName = "Bad Login User",
+            email,
+            password = "Password123!",
+            role = "Participant"
+        });
+
+        var response = await client.PostAsJsonAsync("/api/auth/login", new
+        {
+            email,
+            password = "WrongPassword!"
+        });
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Fact]
     public async Task ParticipantIsForbiddenFromCreatingEvents()
     {
         using var client = _factory.CreateClient();
