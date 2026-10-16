@@ -86,6 +86,7 @@ app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 app.MapGet("/", () => Results.Ok(new { name = "RaceDay API", swagger = "/swagger" })).WithTags("Health").WithSummary("API health and documentation entry point.");
+app.MapGet("/health", () => Results.Ok(new { status = "ok", environment = app.Environment.EnvironmentName })).WithTags("Health").WithSummary("Simple health check for local and CI verification.");
 
 app.Run();
 
