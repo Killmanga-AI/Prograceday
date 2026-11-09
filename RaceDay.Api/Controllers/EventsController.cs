@@ -10,6 +10,7 @@ namespace RaceDay.Api.Controllers;
 [Route("api/events")]
 public sealed class EventsController(RaceDayContext db) : ApiControllerBase
 {
+    /// <summary>Lists upcoming events with optional text and type filters.</summary>
     [AllowAnonymous, HttpGet]
     public async Task<IActionResult> GetAll([FromQuery] string? search, [FromQuery] string? type, [FromQuery] DateTime? from)
     {
@@ -27,6 +28,7 @@ public sealed class EventsController(RaceDayContext db) : ApiControllerBase
         return Ok(events);
     }
 
+    /// <summary>Returns a single event by identifier.</summary>
     [AllowAnonymous, HttpGet("{id:int}")]
     public async Task<IActionResult> Get(int id)
     {
@@ -37,6 +39,11 @@ public sealed class EventsController(RaceDayContext db) : ApiControllerBase
         return item is null ? NotFound() : Ok(item);
     }
 
+    /// <summary>Creates an event for the authenticated organiser.</summary>
+    [ProducesResponseType(StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [Authorize(Roles = "Organiser"), HttpPost]
     public async Task<IActionResult> Create(EventRequest request)
     {
@@ -48,6 +55,7 @@ public sealed class EventsController(RaceDayContext db) : ApiControllerBase
         return CreatedAtAction(nameof(Get), new { id = item.EventId }, ToResponse(item));
     }
 
+    /// <summary>Updates an event owned by the authenticated organiser.</summary>
     [Authorize(Roles = "Organiser"), HttpPut("{id:int}")]
     public async Task<IActionResult> Update(int id, EventRequest request)
     {
@@ -61,6 +69,7 @@ public sealed class EventsController(RaceDayContext db) : ApiControllerBase
         return Ok(ToResponse(item));
     }
 
+    /// <summary>Deletes an event and its dependent records.</summary>
     [Authorize(Roles = "Organiser"), HttpDelete("{id:int}")]
     public async Task<IActionResult> Delete(int id)
     {

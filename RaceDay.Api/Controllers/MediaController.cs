@@ -9,7 +9,10 @@ namespace RaceDay.Api.Controllers;
 
 [Authorize]
 [Route("api")]
-public sealed class MediaController(RaceDayContext db, IBlobStorageService storage) : ApiControllerBase
+public sealed class MediaController(
+    RaceDayContext db,
+    IBlobStorageService storage,
+    ILogger<MediaController> logger) : ApiControllerBase
 {
     private const long MaxImageBytes = 5 * 1024 * 1024;
     private static readonly HashSet<string> AllowedTypes = new(StringComparer.OrdinalIgnoreCase)
@@ -23,8 +26,10 @@ public sealed class MediaController(RaceDayContext db, IBlobStorageService stora
         var item = await db.Events.SingleOrDefaultAsync(x => x.EventId == id, cancellationToken);
         if (item is null) return NotFound();
         if (item.OrganiserId != CurrentUserId) return Forbid();
+
         var validation = await ValidateAsync(file);
         if (validation is not null) return BadRequest(new { message = validation });
+
         try
         {
             await using var stream = file!.OpenReadStream();
@@ -32,8 +37,20 @@ public sealed class MediaController(RaceDayContext db, IBlobStorageService stora
             await db.SaveChangesAsync(cancellationToken);
             return Ok(new { item.EventId, item.BannerImageUrl });
         }
-        catch (InvalidOperationException ex) { return StatusCode(503, new { message = ex.Message }); }
-        catch (RequestFailedException) { return StatusCode(502, new { message = "Azure Blob Storage rejected the upload. Check the storage configuration and container permissions." }); }
+        catch (InvalidOperationException ex)
+        {
+            return StatusCode(503, new { message = ex.Message });
+        }
+        catch (RequestFailedException ex)
+        {
+            logger.LogError(ex, "Azure Blob Storage rejected the banner upload for event {EventId}.", id);
+            return StatusCode(502, new { message = "Azure Blob Storage rejected the upload. Check the storage configuration and container permissions." });
+        }
+        catch (IOException ex)
+        {
+            logger.LogError(ex, "The banner could not be written to local media storage for event {EventId}.", id);
+            return StatusCode(500, new { message = "The image could not be stored. Please try again." });
+        }
     }
 
     [HttpPost("users/me/profile-picture")]
@@ -42,8 +59,10 @@ public sealed class MediaController(RaceDayContext db, IBlobStorageService stora
     {
         var user = await db.Users.SingleOrDefaultAsync(x => x.UserId == CurrentUserId, cancellationToken);
         if (user is null) return NotFound();
+
         var validation = await ValidateAsync(file);
         if (validation is not null) return BadRequest(new { message = validation });
+
         try
         {
             await using var stream = file!.OpenReadStream();
@@ -51,14 +70,27 @@ public sealed class MediaController(RaceDayContext db, IBlobStorageService stora
             await db.SaveChangesAsync(cancellationToken);
             return Ok(new { user.UserId, user.ProfilePictureUrl });
         }
-        catch (InvalidOperationException ex) { return StatusCode(503, new { message = ex.Message }); }
-        catch (RequestFailedException) { return StatusCode(502, new { message = "Azure Blob Storage rejected the upload. Check the storage configuration and container permissions." }); }
+        catch (InvalidOperationException ex)
+        {
+            return StatusCode(503, new { message = ex.Message });
+        }
+        catch (RequestFailedException ex)
+        {
+            logger.LogError(ex, "Azure Blob Storage rejected the profile picture upload for user {UserId}.", user.UserId);
+            return StatusCode(502, new { message = "Azure Blob Storage rejected the upload. Check the storage configuration and container permissions." });
+        }
+        catch (IOException ex)
+        {
+            logger.LogError(ex, "The profile picture could not be written to local media storage for user {UserId}.", user.UserId);
+            return StatusCode(500, new { message = "The image could not be stored. Please try again." });
+        }
     }
 
     private static async Task<string?> ValidateAsync(IFormFile? file)
     {
         if (file is null || file.Length == 0) return "Please select an image file.";
         if (file.Length > MaxImageBytes) return "Image must be 5 MB or smaller.";
+
         var contentType = file.ContentType.ToLowerInvariant();
         if (!AllowedTypes.Contains(contentType)) return "Only JPG, PNG and WebP images are accepted.";
 
