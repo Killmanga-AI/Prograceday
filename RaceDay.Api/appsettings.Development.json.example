@@ -4,7 +4,13 @@
   },
   "Jwt": {
     "Issuer": "RaceDay",
-    "Audience": "RaceDayClients"
+    "Audience": "RaceDayClients",
+    "Key": "replace-with-a-random-secret-at-least-32-characters"
+  },
+  "Media": {
+    "Provider": "Local",
+    "LocalPath": "App_Data/media",
+    "PublicBaseUrl": "http://localhost:5171"
   },
   "AzureBlobStorage": {
     "ConnectionString": "",
