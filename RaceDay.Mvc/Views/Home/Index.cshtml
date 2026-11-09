@@ -1,3 +1,48 @@
-@{ViewData["Title"]="Home";}
-<section class="hero mb-4"><span class="badge text-bg-warning mb-3">SPORTS EVENT MANAGEMENT</span><h1 class="display-4">Your next finish line<br/>starts here.</h1><p class="lead col-lg-7">Discover running, walking and cycling events. Organisers can manage registrations, categories and race results in one place.</p><a class="btn btn-warning btn-lg me-2" asp-controller="Events" asp-action="Browse">Explore events</a><a class="btn btn-outline-light btn-lg" asp-controller="Account" asp-action="Register">Get started</a></section>
-<div class="row g-3"><div class="col-md-4"><div class="card p-4 h-100"><h4>Find your event</h4><p class="text-secondary">Browse upcoming events and choose the distance that suits you.</p></div></div><div class="col-md-4"><div class="card p-4 h-100"><h4>Manage with ease</h4><p class="text-secondary">Organisers can create events, manage categories and record results.</p></div></div><div class="col-md-4"><div class="card p-4 h-100"><h4>Track your progress</h4><p class="text-secondary">Keep your enrolments and finish times together in your participant profile.</p></div></div></div>
+@{
+    ViewData["Title"] = "Home";
+    var signedIn = SessionAuth.IsAuthenticated(Context);
+    var role = SessionAuth.Role(Context);
+}
+<section class="hero mb-4">
+    <span class="badge text-bg-warning mb-3">SPORTS EVENT MANAGEMENT</span>
+    <h1 class="display-4">Your next finish line<br />starts here.</h1>
+    <p class="lead col-lg-7">
+        Discover running, walking and cycling events. Organisers manage registrations, categories
+        and race results; participants track every start and finish in one place.
+    </p>
+    <div class="d-flex flex-wrap gap-2">
+        <a class="btn btn-warning btn-lg" asp-controller="Events" asp-action="Browse">Explore events</a>
+        @if (!signedIn)
+        {
+            <a class="btn btn-outline-light btn-lg" asp-controller="Account" asp-action="Register">Get started</a>
+        }
+        else if (role == "Organiser")
+        {
+            <a class="btn btn-outline-light btn-lg" asp-controller="Organiser" asp-action="Dashboard">Organiser dashboard</a>
+        }
+        else
+        {
+            <a class="btn btn-outline-light btn-lg" asp-controller="Events" asp-action="MyEvents">My events</a>
+        }
+    </div>
+</section>
+<div class="row g-3">
+    <div class="col-md-4">
+        <div class="card p-4 h-100">
+            <h2 class="h4">Find your event</h2>
+            <p class="text-secondary mb-0">Browse upcoming events and choose the distance that suits you.</p>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card p-4 h-100">
+            <h2 class="h4">Manage with ease</h2>
+            <p class="text-secondary mb-0">Organisers create events, manage categories, view enrolments and record results.</p>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card p-4 h-100">
+            <h2 class="h4">Track your progress</h2>
+            <p class="text-secondary mb-0">Keep your enrolments, finish times and category positions together.</p>
+        </div>
+    </div>
+</div>

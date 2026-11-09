@@ -1,0 +1,12 @@
+@{ ViewData["Title"] = "Event unavailable"; }
+<div class="card p-5 text-center">
+    <div class="display-6 mb-2">📡</div>
+    <h1 class="h3">This event is temporarily unavailable</h1>
+    <p class="text-secondary mx-auto" style="max-width: 36rem;">
+        @(ViewBag.Error as string ?? "The RaceDay API could not be reached. Please try again shortly.")
+    </p>
+    <div class="d-flex justify-content-center gap-2">
+        <a class="btn btn-primary" asp-action="Browse">Back to events</a>
+        <a class="btn btn-outline-secondary" asp-controller="Home" asp-action="Index">Home</a>
+    </div>
+</div>

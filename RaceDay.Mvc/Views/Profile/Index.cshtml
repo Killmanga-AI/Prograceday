@@ -1,3 +1,36 @@
 @model ProfileViewModel
-@{ViewData["Title"]="My profile";}
-<div class="card form-card p-4"><h1>My profile</h1>@if(!string.IsNullOrWhiteSpace(Model.ProfilePictureUrl)){<img src="@Model.ProfilePictureUrl" alt="Profile picture" class="rounded-circle mb-3" style="width:100px;height:100px;object-fit:cover"/>}<form asp-action="Index" method="post" enctype="multipart/form-data"><div asp-validation-summary="ModelOnly" class="text-danger"></div><div class="mb-3"><label asp-for="FullName" class="form-label"></label><input asp-for="FullName" class="form-control"/></div><div class="mb-3"><label asp-for="Email" class="form-label"></label><input asp-for="Email" class="form-control"/></div><div class="mb-3"><label asp-for="Picture" class="form-label">Profile picture (JPG, PNG or WebP, max 5 MB)</label><input asp-for="Picture" type="file" accept="image/jpeg,image/png,image/webp" class="form-control"/></div><button class="btn btn-primary">Save profile</button></form></div>
+@{ ViewData["Title"] = "My profile"; }
+<div class="row justify-content-center">
+    <div class="col-lg-7">
+        <div class="card form-card p-4">
+            <h1 class="h3">My profile</h1>
+            <p class="text-secondary">Update your details or change your profile picture.</p>
+            @if (!string.IsNullOrWhiteSpace(Model.ProfilePictureUrl))
+            {
+                <img src="@Model.ProfilePictureUrl" alt="Your profile picture" class="rounded-circle profile-picture mb-3" />
+            }
+            <form asp-action="Index" method="post" enctype="multipart/form-data" data-busy>
+                <div asp-validation-summary="ModelOnly" class="text-danger mb-3" role="alert"></div>
+                <div class="mb-3">
+                    <label asp-for="FullName" class="form-label"></label>
+                    <input asp-for="FullName" class="form-control" />
+                    <span asp-validation-for="FullName" class="text-danger"></span>
+                </div>
+                <div class="mb-3">
+                    <label asp-for="Email" class="form-label"></label>
+                    <input asp-for="Email" class="form-control" />
+                    <span asp-validation-for="Email" class="text-danger"></span>
+                </div>
+                <div class="mb-3">
+                    <label asp-for="Picture" class="form-label">Profile picture (JPG, PNG or WebP, max 5 MB)</label>
+                    <input asp-for="Picture" type="file" accept="image/jpeg,image/png,image/webp" class="form-control" />
+                    <span asp-validation-for="Picture" class="text-danger"></span>
+                </div>
+                <button type="submit" class="btn btn-primary">Save profile</button>
+            </form>
+        </div>
+    </div>
+</div>
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

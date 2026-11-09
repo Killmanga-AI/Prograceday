@@ -1,1 +1,20 @@
-@{ViewData["Title"]="Access denied";}<div class="text-center py-5"><h1>Access denied</h1><p class="text-secondary">Your account does not have permission to view this page.</p><a class="btn btn-primary" asp-controller="Home" asp-action="Index">Return home</a></div>
+@{ ViewData["Title"] = "Access denied"; }
+<div class="text-center py-5">
+    <div class="display-5 mb-2">🔒</div>
+    <h1 class="h3">Access denied</h1>
+    <p class="text-secondary mx-auto" style="max-width: 34rem;">
+        Your account does not have permission to view this page. Organiser and participant
+        areas are separated by role.
+    </p>
+    <div class="d-flex justify-content-center gap-2">
+        <a class="btn btn-primary" asp-controller="Home" asp-action="Index">Return home</a>
+        @if (SessionAuth.IsAuthenticated(Context))
+        {
+            <a class="btn btn-outline-secondary" asp-controller="Profile" asp-action="Index">My profile</a>
+        }
+        else
+        {
+            <a class="btn btn-outline-secondary" asp-controller="Account" asp-action="Login">Sign in</a>
+        }
+    </div>
+</div>

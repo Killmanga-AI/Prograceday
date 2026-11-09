@@ -1,10 +1,62 @@
 @model EventViewModel
-<div asp-validation-summary="ModelOnly" class="text-danger"></div>
-<input asp-for="EventId" type="hidden"/>
-<div class="mb-3"><label asp-for="EventName" class="form-label"></label><input asp-for="EventName" class="form-control"/><span asp-validation-for="EventName" class="text-danger"></span></div>
-<div class="mb-3"><label asp-for="Description" class="form-label"></label><textarea asp-for="Description" class="form-control"></textarea></div>
-<div class="row"><div class="col-md-6 mb-3"><label asp-for="EventDate" class="form-label"></label><input asp-for="EventDate" type="datetime-local" class="form-control"/><span asp-validation-for="EventDate" class="text-danger"></span></div><div class="col-md-6 mb-3"><label asp-for="Location" class="form-label"></label><input asp-for="Location" class="form-control"/></div></div>
-<div class="row"><div class="col-md-4 mb-3"><label asp-for="EventDistanceKm" class="form-label"></label><input asp-for="EventDistanceKm" class="form-control"/></div><div class="col-md-4 mb-3"><label asp-for="EventType" class="form-label"></label><select asp-for="EventType" class="form-select"><option>Run</option><option>Walk</option><option>Cycle</option></select></div><div class="col-md-4 mb-3"><label asp-for="RouteInfo" class="form-label"></label><input asp-for="RouteInfo" class="form-control"/></div></div>
-<div class="mb-3"><label asp-for="Banner" class="form-label">Event banner (JPG, PNG or WebP, max 5 MB)</label><input asp-for="Banner" type="file" accept="image/jpeg,image/png,image/webp" class="form-control"/></div>
-@if(!string.IsNullOrWhiteSpace(Model.BannerImageUrl)){<img src="@Model.BannerImageUrl" class="img-fluid rounded mb-3" style="max-height:140px" alt="Current event banner"/>}
-<button class="btn btn-primary">Save event</button> <a asp-action="Events" class="btn btn-outline-secondary">Cancel</a>
+<div asp-validation-summary="ModelOnly" class="text-danger mb-3" role="alert"></div>
+<input asp-for="EventId" type="hidden" />
+<div class="mb-3">
+    <label asp-for="EventName" class="form-label"></label>
+    <input asp-for="EventName" class="form-control" />
+    <span asp-validation-for="EventName" class="text-danger"></span>
+</div>
+<div class="mb-3">
+    <label asp-for="Description" class="form-label"></label>
+    <textarea asp-for="Description" class="form-control" rows="3"></textarea>
+    <span asp-validation-for="Description" class="text-danger"></span>
+</div>
+<div class="row">
+    <div class="col-md-6 mb-3">
+        <label asp-for="EventDate" class="form-label"></label>
+        <input asp-for="EventDate" type="datetime-local" class="form-control" />
+        <span asp-validation-for="EventDate" class="text-danger"></span>
+    </div>
+    <div class="col-md-6 mb-3">
+        <label asp-for="Location" class="form-label"></label>
+        <input asp-for="Location" class="form-control" />
+        <span asp-validation-for="Location" class="text-danger"></span>
+    </div>
+</div>
+<div class="row">
+    <div class="col-md-4 mb-3">
+        <label asp-for="EventDistanceKm" class="form-label"></label>
+        <input asp-for="EventDistanceKm" class="form-control" type="number" min="0.01" step="0.01" />
+        <span asp-validation-for="EventDistanceKm" class="text-danger"></span>
+    </div>
+    <div class="col-md-4 mb-3">
+        <label asp-for="EventType" class="form-label"></label>
+        <select asp-for="EventType" class="form-select">
+            <option value="Run">Run</option>
+            <option value="Walk">Walk</option>
+            <option value="Cycle">Cycle</option>
+        </select>
+        <span asp-validation-for="EventType" class="text-danger"></span>
+    </div>
+    <div class="col-md-4 mb-3">
+        <label asp-for="RouteInfo" class="form-label"></label>
+        <input asp-for="RouteInfo" class="form-control" />
+        <span asp-validation-for="RouteInfo" class="text-danger"></span>
+    </div>
+</div>
+<div class="mb-3">
+    <label asp-for="Banner" class="form-label">Event banner (JPG, PNG or WebP, max 5 MB)</label>
+    <input asp-for="Banner" type="file" accept="image/jpeg,image/png,image/webp" class="form-control" />
+    <span asp-validation-for="Banner" class="text-danger"></span>
+</div>
+@if (!string.IsNullOrWhiteSpace(Model.BannerImageUrl))
+{
+    <div class="mb-3">
+        <div class="text-secondary small mb-1">Current banner</div>
+        <img src="@Model.BannerImageUrl" class="img-fluid rounded" style="max-height: 140px;" alt="Current event banner" />
+    </div>
+}
+<div class="d-flex gap-2">
+    <button type="submit" class="btn btn-primary">@(ViewData["SubmitLabel"] as string ?? "Save event")</button>
+    <a asp-action="Events" class="btn btn-outline-secondary">Cancel</a>
+</div>

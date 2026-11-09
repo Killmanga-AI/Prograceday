@@ -1,5 +1,96 @@
 @model List<CategoryDto>
-@{ViewData["Title"]="Manage categories"; var ev=ViewBag.Event as EventDto;}
-<div class="d-flex justify-content-between align-items-center"><div><h1>Categories</h1><p class="text-secondary">@ev?.EventName</p></div><a class="btn btn-outline-secondary" asp-action="Events">Back to events</a></div>
-<div class="row g-3"><div class="col-lg-7"><div class="card p-3"><h4>Current categories</h4><div class="table-responsive"><table class="table"><thead><tr><th>Category</th><th>Distance</th><th>Capacity</th><th>Enrolled</th><th></th></tr></thead><tbody>@foreach(var c in Model){<tr><td colspan="4"><form asp-action="UpdateCategory" method="post" class="row g-1"><input type="hidden" name="CategoryId" value="@c.CategoryId"/><input type="hidden" name="EventId" value="@c.EventId"/><div class="col-md-4"><input name="CategoryName" class="form-control form-control-sm" value="@c.CategoryName" required/></div><div class="col-md-2"><input name="DistanceKm" type="number" min=".01" step=".01" class="form-control form-control-sm" value="@c.DistanceKm"/></div><div class="col-md-2"><input name="MaxParticipants" type="number" min="1" class="form-control form-control-sm" value="@c.MaxParticipants"/></div><div class="col-md-2 small text-secondary align-self-center">@c.EnrolledCount enrolled</div><div class="col-md-2"><button class="btn btn-sm btn-outline-primary">Update</button></div></form></td><td><form asp-action="DeleteCategory" method="post"><input type="hidden" name="id" value="@c.CategoryId"/><input type="hidden" name="eventId" value="@c.EventId"/><button class="btn btn-sm btn-outline-danger">Delete</button></form></td></tr>}</tbody></table></div></div></div>
-<div class="col-lg-5"><div class="card p-3"><h4>Add category</h4><form asp-action="AddCategory" method="post"><input type="hidden" name="EventId" value="@ev?.EventId"/><div class="mb-3"><label class="form-label">Category name</label><input name="CategoryName" class="form-control" required maxlength="50" placeholder="e.g. 10 km Open"/></div><div class="mb-3"><label class="form-label">Distance (km)</label><input name="DistanceKm" class="form-control" type="number" min=".01" step=".01" value="5" required/></div><div class="mb-3"><label class="form-label">Maximum participants</label><input name="MaxParticipants" class="form-control" type="number" min="1" value="100" required/></div><button class="btn btn-primary">Add category</button></form></div></div></div>
+@{
+    ViewData["Title"] = "Manage categories";
+    var eventItem = ViewBag.Event as EventDto;
+}
+<div class="d-flex flex-wrap justify-content-between align-items-end gap-2 mb-3">
+    <div>
+        <h1 class="mb-1">Categories</h1>
+        <p class="text-secondary mb-0">@eventItem?.EventName · @eventItem?.EventDate.ToString("dd MMM yyyy")</p>
+    </div>
+    <a class="btn btn-outline-secondary" asp-action="Events">Back to events</a>
+</div>
+@if (ViewBag.Error is string error)
+{
+    <div class="alert alert-warning" role="alert">@error</div>
+}
+<div class="row g-3">
+    <div class="col-lg-7">
+        <div class="card p-3">
+            <h2 class="h5">Current categories</h2>
+            @if (Model.Count == 0)
+            {
+                <p class="text-secondary mb-0">No categories yet. Add the first one so participants can enrol.</p>
+            }
+            else
+            {
+                <div class="table-responsive">
+                    <table class="table align-middle mb-0">
+                        <caption class="visually-hidden">Event categories</caption>
+                        <thead><tr><th scope="col">Category</th><th scope="col">Distance</th><th scope="col">Capacity</th><th scope="col"><span class="visually-hidden">Actions</span></th></tr></thead>
+                        <tbody>
+                            @foreach (var category in Model)
+                            {
+                                <tr>
+                                    <td>
+                                        <form asp-action="UpdateCategory" method="post" class="row g-1 align-items-center" data-busy>
+                                            <input type="hidden" name="CategoryId" value="@category.CategoryId" />
+                                            <input type="hidden" name="EventId" value="@category.EventId" />
+                                            <div class="col-12 col-md-5">
+                                                <label class="visually-hidden" for="name-@category.CategoryId">Category name</label>
+                                                <input id="name-@category.CategoryId" name="CategoryName" class="form-control form-control-sm" value="@category.CategoryName" required maxlength="50" />
+                                            </div>
+                                            <div class="col-6 col-md-3">
+                                                <label class="visually-hidden" for="distance-@category.CategoryId">Distance in kilometres</label>
+                                                <input id="distance-@category.CategoryId" name="DistanceKm" type="number" min="0.01" step="0.01" class="form-control form-control-sm" value="@category.DistanceKm" required />
+                                            </div>
+                                            <div class="col-6 col-md-2">
+                                                <label class="visually-hidden" for="capacity-@category.CategoryId">Maximum participants</label>
+                                                <input id="capacity-@category.CategoryId" name="MaxParticipants" type="number" min="1" class="form-control form-control-sm" value="@category.MaxParticipants" required />
+                                            </div>
+                                            <div class="col-12 col-md-2">
+                                                <button type="submit" class="btn btn-sm btn-outline-primary w-100">Update</button>
+                                            </div>
+                                        </form>
+                                        <div class="small text-secondary mt-1">@category.EnrolledCount of @category.MaxParticipants places taken</div>
+                                    </td>
+                                    <td>@category.DistanceKm km</td>
+                                    <td>@category.MaxParticipants</td>
+                                    <td class="text-end">
+                                        <form asp-action="DeleteCategory" method="post" data-busy
+                                              data-confirm="Delete @category.CategoryName? Categories with enrolments cannot be deleted.">
+                                            <input type="hidden" name="id" value="@category.CategoryId" />
+                                            <input type="hidden" name="eventId" value="@category.EventId" />
+                                            <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
+                                        </form>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+    </div>
+    <div class="col-lg-5">
+        <div class="card p-3">
+            <h2 class="h5">Add category</h2>
+            <form asp-action="AddCategory" method="post" data-busy>
+                <input type="hidden" name="EventId" value="@eventItem?.EventId" />
+                <div class="mb-3">
+                    <label class="form-label" for="new-category-name">Category name</label>
+                    <input id="new-category-name" name="CategoryName" class="form-control" required maxlength="50" minlength="2" placeholder="e.g. 10 km Open" />
+                </div>
+                <div class="mb-3">
+                    <label class="form-label" for="new-category-distance">Distance (km)</label>
+                    <input id="new-category-distance" name="DistanceKm" class="form-control" type="number" min="0.01" step="0.01" value="5" required />
+                </div>
+                <div class="mb-3">
+                    <label class="form-label" for="new-category-capacity">Maximum participants</label>
+                    <input id="new-category-capacity" name="MaxParticipants" class="form-control" type="number" min="1" value="100" required />
+                </div>
+                <button type="submit" class="btn btn-primary">Add category</button>
+            </form>
+        </div>
+    </div>
+</div>

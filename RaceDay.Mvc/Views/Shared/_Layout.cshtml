@@ -1,36 +1,96 @@
+@{
+    var role = SessionAuth.Role(Context);
+    var signedIn = SessionAuth.IsAuthenticated(Context);
+    var currentController = ViewContext.RouteData.Values["controller"]?.ToString() ?? "";
+    string Active(string controller) =>
+        string.Equals(currentController, controller, StringComparison.OrdinalIgnoreCase) ? "active" : "";
+}
 <!DOCTYPE html>
-<html lang="en"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>@ViewData["Title"] - RaceDay</title>
-<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"/>
-<link href="~/css/site.css" rel="stylesheet"/></head>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="RaceDay — discover, organise and track running, walking and cycling events." />
+    <title>@ViewData["Title"] · RaceDay</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <link href="~/css/site.css" rel="stylesheet" asp-append-version="true" />
+</head>
 <body>
-<nav class="navbar navbar-expand-lg navbar-dark bg-dark"><div class="container">
-<a class="navbar-brand fw-bold" asp-controller="Home" asp-action="Index">🏁 RaceDay</a>
-<button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#nav"><span class="navbar-toggler-icon"></span></button>
-<div class="collapse navbar-collapse" id="nav"><ul class="navbar-nav me-auto">
-@if(Context.Session.GetString("Role")=="Organiser"){
-<li class="nav-item"><a class="nav-link" asp-controller="Organiser" asp-action="Dashboard">Dashboard</a></li>
-<li class="nav-item"><a class="nav-link" asp-controller="Organiser" asp-action="Events">My Events</a></li>
-}else if(Context.Session.GetString("Role")=="Participant"){
-<li class="nav-item"><a class="nav-link" asp-controller="Events" asp-action="Browse">Browse Events</a></li>
-<li class="nav-item"><a class="nav-link" asp-controller="Events" asp-action="MyEvents">My Events</a></li>
-<li class="nav-item"><a class="nav-link" asp-controller="Events" asp-action="MyResults">My Results</a></li>
-}
-</ul><ul class="navbar-nav">
-@if(Context.Session.GetString("Token") is not null){
-<li class="nav-item"><a class="nav-link" asp-controller="Profile" asp-action="Index">@Context.Session.GetString("FullName") · Profile</a></li>
-<li class="nav-item"><form asp-controller="Account" asp-action="Logout" method="post"><button class="btn btn-outline-light btn-sm mt-1">Sign out</button></form></li>
-}else{
-<li class="nav-item"><a class="nav-link" asp-controller="Account" asp-action="Login">Sign in</a></li>
-<li class="nav-item"><a class="btn btn-warning btn-sm mt-1" asp-controller="Account" asp-action="Register">Create account</a></li>
-}
-</ul></div></div></nav>
-<main class="container py-4">
-@if(TempData["Success"] is string success){<div class="alert alert-success alert-dismissible">@success<button class="btn-close" data-bs-dismiss="alert"></button></div>}
-@if(TempData["Error"] is string error){<div class="alert alert-danger alert-dismissible">@error<button class="btn-close" data-bs-dismiss="alert"></button></div>}
-@RenderBody()
+<a class="visually-hidden-focusable p-2 bg-warning text-dark" href="#main-content">Skip to main content</a>
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark sticky-top">
+    <div class="container">
+        <a class="navbar-brand fw-bold" asp-controller="Home" asp-action="Index">🏁 RaceDay</a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#main-nav"
+                aria-controls="main-nav" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="main-nav">
+            <ul class="navbar-nav me-auto">
+                @if (role == "Organiser")
+                {
+                    <li class="nav-item"><a class="nav-link @Active("Organiser")" asp-controller="Organiser" asp-action="Dashboard">Dashboard</a></li>
+                    <li class="nav-item"><a class="nav-link" asp-controller="Organiser" asp-action="Events">My events</a></li>
+                    <li class="nav-item"><a class="nav-link" asp-controller="Events" asp-action="Browse">Browse</a></li>
+                }
+                else if (role == "Participant")
+                {
+                    <li class="nav-item"><a class="nav-link @Active("Events")" asp-controller="Events" asp-action="Browse">Browse events</a></li>
+                    <li class="nav-item"><a class="nav-link" asp-controller="Events" asp-action="MyEvents">My events</a></li>
+                    <li class="nav-item"><a class="nav-link" asp-controller="Events" asp-action="MyResults">My results</a></li>
+                }
+                else
+                {
+                    <li class="nav-item"><a class="nav-link @Active("Events")" asp-controller="Events" asp-action="Browse">Browse events</a></li>
+                }
+            </ul>
+            <ul class="navbar-nav align-items-lg-center">
+                @if (signedIn)
+                {
+                    <li class="nav-item">
+                        <a class="nav-link @Active("Profile")" asp-controller="Profile" asp-action="Index">
+                            @SessionAuth.FullName(Context) <span class="badge text-bg-warning ms-1">@role</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <form asp-controller="Account" asp-action="Logout" method="post" class="d-inline">
+                            <button type="submit" class="btn btn-outline-light btn-sm ms-lg-2">Sign out</button>
+                        </form>
+                    </li>
+                }
+                else
+                {
+                    <li class="nav-item"><a class="nav-link @Active("Account")" asp-controller="Account" asp-action="Login">Sign in</a></li>
+                    <li class="nav-item"><a class="btn btn-warning btn-sm ms-lg-2" asp-controller="Account" asp-action="Register">Create account</a></li>
+                }
+            </ul>
+        </div>
+    </div>
+</nav>
+<main id="main-content" class="container py-4 flex-grow-1">
+    @if (TempData["Success"] is string success)
+    {
+        <div class="alert alert-success alert-dismissible fade show" role="status">
+            @success
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Dismiss"></button>
+        </div>
+    }
+    @if (TempData["Error"] is string error)
+    {
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            @error
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Dismiss"></button>
+        </div>
+    }
+    @RenderBody()
 </main>
-<footer class="border-top py-4 mt-5"><div class="container text-secondary small">RaceDay · Run together. Go further.</div></footer>
+<footer class="border-top py-4 mt-auto">
+    <div class="container d-flex flex-column flex-md-row justify-content-between gap-2 text-secondary small">
+        <span>RaceDay · Run together. Go further.</span>
+        <span>ASP.NET Core MVC · Part 3 REST API client</span>
+    </div>
+</footer>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-@await RenderSectionAsync("Scripts",required:false)
-</body></html>
+<script src="~/js/site.js" asp-append-version="true"></script>
+@await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

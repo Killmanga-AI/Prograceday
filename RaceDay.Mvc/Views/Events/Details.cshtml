@@ -1,5 +1,97 @@
 @model EventDto
-@{ViewData["Title"]=Model.EventName; var categories=ViewBag.Categories as List<CategoryDto> ?? [];}
-@if(!string.IsNullOrWhiteSpace(Model.BannerImageUrl)){<img src="@Model.BannerImageUrl" class="event-banner mb-3" style="height:280px" alt="Event banner"/>}
-<div class="card p-4 mb-3"><span class="badge text-bg-warning align-self-start">@Model.EventType</span><h1 class="mt-2">@Model.EventName</h1><p class="text-secondary">@Model.Description</p><div class="row"><div class="col-md-4"><b>Date</b><p>@Model.EventDate.ToString("dd MMMM yyyy · HH:mm")</p></div><div class="col-md-4"><b>Location</b><p>@Model.Location</p></div><div class="col-md-4"><b>Distance</b><p>@Model.EventDistanceKm km</p></div></div>@if(!string.IsNullOrWhiteSpace(Model.RouteInfo)){<b>Route information</b><p>@Model.RouteInfo</p>}</div>
-<h3>Available categories</h3><div class="row g-3">@foreach(var c in categories){<div class="col-md-6"><div class="card p-3"><h5>@c.CategoryName</h5><p class="text-secondary">@c.DistanceKm km · @c.EnrolledCount / @c.MaxParticipants enrolled</p>@if(Context.Session.GetString("Role")=="Participant"){<form asp-action="Enrol" method="post"><input type="hidden" name="categoryId" value="@c.CategoryId"/><input type="hidden" name="eventId" value="@Model.EventId"/><button class="btn btn-primary" @(c.EnrolledCount>=c.MaxParticipants ? "disabled" : null)>Enrol</button></form>}else if(Context.Session.GetString("Token") is null){<a asp-controller="Account" asp-action="Login" class="btn btn-outline-primary">Sign in to enrol</a>}</div></div>}</div>
+@{
+    ViewData["Title"] = Model.EventName;
+    var categories = ViewBag.Categories as List<CategoryDto> ?? [];
+    var role = SessionAuth.Role(Context);
+    var signedIn = SessionAuth.IsAuthenticated(Context);
+}
+@if (ViewBag.Error is string error)
+{
+    <div class="alert alert-warning" role="alert">@error</div>
+}
+@if (!string.IsNullOrWhiteSpace(Model.BannerImageUrl))
+{
+    <img src="@Model.BannerImageUrl" class="event-banner mb-3 rounded" style="height: 280px;" alt="Banner for @Model.EventName" />
+}
+<div class="card p-4 mb-4">
+    <div class="d-flex flex-wrap justify-content-between align-items-start gap-2">
+        <div>
+            <span class="badge text-bg-warning">@Model.EventType</span>
+            <h1 class="mt-2 mb-1">@Model.EventName</h1>
+            <p class="text-secondary mb-0">@Model.Location</p>
+        </div>
+        @if (role == "Organiser")
+        {
+            <a class="btn btn-outline-secondary btn-sm" asp-controller="Organiser" asp-action="EventCategories" asp-route-id="@Model.EventId">Manage event</a>
+        }
+    </div>
+    @if (!string.IsNullOrWhiteSpace(Model.Description))
+    {
+        <p class="mt-3 mb-3">@Model.Description</p>
+    }
+    <div class="row g-3">
+        <div class="col-md-4"><div class="text-secondary small">Date</div><div class="fw-semibold">@Model.EventDate.ToString("dd MMMM yyyy · HH:mm")</div></div>
+        <div class="col-md-4"><div class="text-secondary small">Location</div><div class="fw-semibold">@Model.Location</div></div>
+        <div class="col-md-4"><div class="text-secondary small">Distance</div><div class="fw-semibold">@Model.EventDistanceKm km</div></div>
+    </div>
+    @if (!string.IsNullOrWhiteSpace(Model.RouteInfo))
+    {
+        <div class="mt-3">
+            <div class="text-secondary small">Route information</div>
+            <p class="mb-0">@Model.RouteInfo</p>
+        </div>
+    }
+</div>
+
+<div class="d-flex justify-content-between align-items-center mb-2">
+    <h2 class="h4 mb-0">Available categories</h2>
+    @if (!signedIn)
+    {
+        <a class="btn btn-outline-primary btn-sm" asp-controller="Account" asp-action="Login" asp-route-returnUrl="@Url.Action("Details", "Events", new { id = Model.EventId })">Sign in to enrol</a>
+    }
+</div>
+@if (categories.Count == 0)
+{
+    <div class="alert alert-info">The organiser has not published categories for this event yet.</div>
+}
+else
+{
+    <div class="row g-3">
+        @foreach (var category in categories)
+        {
+            var full = category.EnrolledCount >= category.MaxParticipants;
+            <div class="col-md-6">
+                <div class="card p-3 h-100 d-flex flex-column">
+                    <h3 class="h5">@category.CategoryName</h3>
+                    <p class="text-secondary mb-2">
+                        @category.DistanceKm km · @category.EnrolledCount / @category.MaxParticipants enrolled
+                    </p>
+                    <div class="progress mb-3" role="progressbar" aria-label="Category capacity"
+                         aria-valuenow="@category.EnrolledCount" aria-valuemin="0" aria-valuemax="@category.MaxParticipants">
+                        <div class="progress-bar bg-warning" style="width: @(category.MaxParticipants == 0 ? 0 : Math.Min(100, category.EnrolledCount * 100 / category.MaxParticipants))%"></div>
+                    </div>
+                    @if (role == "Participant")
+                    {
+                        <form asp-action="Enrol" method="post" class="mt-auto" data-busy
+                              data-confirm="Enrol in @category.CategoryName?">
+                            <input type="hidden" name="categoryId" value="@category.CategoryId" />
+                            <input type="hidden" name="eventId" value="@Model.EventId" />
+                            <button type="submit" class="btn btn-primary" disabled="@full">
+                                @(full ? "Category full" : "Enrol")
+                            </button>
+                        </form>
+                    }
+                    else if (!signedIn)
+                    {
+                        <a class="btn btn-outline-primary mt-auto" asp-controller="Account" asp-action="Login"
+                           asp-route-returnUrl="@Url.Action("Details", "Events", new { id = Model.EventId })">Sign in to enrol</a>
+                    }
+                    else
+                    {
+                        <p class="text-secondary small mt-auto mb-0">Only participant accounts can enrol.</p>
+                    }
+                </div>
+            </div>
+        }
+    </div>
+}

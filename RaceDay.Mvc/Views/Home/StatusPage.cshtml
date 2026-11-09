@@ -1,0 +1,10 @@
+@{ ViewData["Title"] = $"Error {ViewBag.Code}"; }
+<div class="text-center py-5">
+    <div class="display-4 fw-bold">@ViewBag.Code</div>
+    <h1 class="h3 mt-2">@ViewBag.Message</h1>
+    <p class="text-secondary">The requested page could not be completed.</p>
+    <div class="d-flex justify-content-center gap-2">
+        <a class="btn btn-primary" asp-controller="Home" asp-action="Index">Return home</a>
+        <a class="btn btn-outline-secondary" asp-controller="Events" asp-action="Browse">Browse events</a>
+    </div>
+</div>

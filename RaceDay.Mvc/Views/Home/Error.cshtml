@@ -1,1 +1,10 @@
-@{ViewData["Title"]="Error";}<div class="alert alert-danger"><h2>Something went wrong</h2><p>Please try again. If the problem continues, contact the RaceDay administrator.</p></div>
+@{ ViewData["Title"] = "Error"; }
+<div class="text-center py-5">
+    <div class="display-5 mb-2">⚠️</div>
+    <h1 class="h3">Something went wrong</h1>
+    <p class="text-secondary mx-auto" style="max-width: 34rem;">
+        The page could not be completed. Try again, or contact the RaceDay administrator if the
+        problem continues.
+    </p>
+    <a class="btn btn-primary" asp-controller="Home" asp-action="Index">Return home</a>
+</div>

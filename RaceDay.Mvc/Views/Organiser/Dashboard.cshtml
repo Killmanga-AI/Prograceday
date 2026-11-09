@@ -1,13 +1,89 @@
-@model JsonElement
-@{ViewData["Title"]="Organiser dashboard";}
-<h1>Organiser dashboard</h1><p class="text-secondary">An overview of your RaceDay activity.</p>
-@if(ViewBag.Error is string err){<div class="alert alert-warning">@err</div>}
-@if(Model.ValueKind==JsonValueKind.Object){
-<div class="row g-3 mb-4">
-@foreach(var item in new[]{("Events","totalEvents"),("Upcoming","upcomingEvents"),("Enrolments","totalEnrolments"),("Results","resultsRecorded")}){<div class="col-6 col-lg-3"><div class="card p-3"><div class="text-secondary">@item.Item1</div><div class="metric">@Model.GetProperty(item.Item2).GetInt32()</div></div></div>}
+@model DashboardDto?
+@{ ViewData["Title"] = "Organiser dashboard"; }
+<div class="d-flex flex-wrap justify-content-between align-items-end gap-2 mb-3">
+    <div>
+        <h1 class="mb-1">Organiser dashboard</h1>
+        <p class="text-secondary mb-0">An overview of your RaceDay activity.</p>
+    </div>
+    <a class="btn btn-primary" asp-action="CreateEvent">+ Create event</a>
 </div>
-<div class="d-flex justify-content-between align-items-center mb-2"><h3>Upcoming events</h3><a class="btn btn-primary" asp-action="CreateEvent">Create event</a></div>
-<div class="card p-3 table-responsive"><table class="table"><thead><tr><th>Event</th><th>Date</th><th>Location</th><th>Enrolments</th><th></th></tr></thead><tbody>@foreach(var e in Model.GetProperty("upcomingEventList").EnumerateArray()){<tr><td>@e.GetProperty("eventName").GetString()</td><td>@e.GetProperty("eventDate").GetDateTime().ToString("dd MMM yyyy")</td><td>@e.GetProperty("location").GetString()</td><td>@e.GetProperty("enrolments").GetInt32()</td><td><a asp-action="EventCategories" asp-route-id="@e.GetProperty("eventId").GetInt32()">Manage</a></td></tr>}</tbody></table></div>
-<h3 class="mt-4">Recent enrolments</h3>
-<div class="card p-3 table-responsive"><table class="table"><thead><tr><th>Participant</th><th>Event</th><th>Category</th><th>Enrolled</th><th>Status</th></tr></thead><tbody>@foreach(var e in Model.GetProperty("recentEnrolments").EnumerateArray()){<tr><td>@e.GetProperty("participant").GetString()</td><td>@e.GetProperty("event").GetString()</td><td>@e.GetProperty("category").GetString()</td><td>@e.GetProperty("enrolmentDate").GetDateTime().ToString("dd MMM yyyy")</td><td>@e.GetProperty("status").GetString()</td></tr>}</tbody></table></div>
-}else{<div class="alert alert-info">No dashboard data is available. Check the API connection.</div>}
+@if (ViewBag.Error is string error)
+{
+    <div class="alert alert-warning" role="alert">@error</div>
+}
+@if (Model is null)
+{
+    <div class="card p-5 text-center">
+        <div class="display-6 mb-2">📊</div>
+        <h2 class="h5">Dashboard data is unavailable</h2>
+        <p class="text-secondary mb-3">The RaceDay API could not be reached. Check the API base URL and try again.</p>
+        <a class="btn btn-outline-primary" asp-action="Dashboard">Retry</a>
+    </div>
+}
+else
+{
+    <div class="row g-3 mb-4">
+        <div class="col-6 col-lg-3"><div class="card p-3 h-100"><div class="text-secondary small">Events</div><div class="metric">@Model.TotalEvents</div></div></div>
+        <div class="col-6 col-lg-3"><div class="card p-3 h-100"><div class="text-secondary small">Upcoming</div><div class="metric">@Model.UpcomingEvents</div></div></div>
+        <div class="col-6 col-lg-3"><div class="card p-3 h-100"><div class="text-secondary small">Enrolments</div><div class="metric">@Model.TotalEnrolments</div></div></div>
+        <div class="col-6 col-lg-3"><div class="card p-3 h-100"><div class="text-secondary small">Results recorded</div><div class="metric">@Model.ResultsRecorded</div></div></div>
+    </div>
+
+    <h2 class="h4">Upcoming events</h2>
+    @if (Model.UpcomingEventList.Count == 0)
+    {
+        <div class="alert alert-info">You have no upcoming events. Create one to start taking enrolments.</div>
+    }
+    else
+    {
+        <div class="card p-3 mb-4">
+            <div class="table-responsive">
+                <table class="table align-middle mb-0">
+                    <caption class="visually-hidden">Your upcoming events</caption>
+                    <thead><tr><th scope="col">Event</th><th scope="col">Date</th><th scope="col">Location</th><th scope="col">Enrolments</th><th scope="col"><span class="visually-hidden">Manage</span></th></tr></thead>
+                    <tbody>
+                        @foreach (var item in Model.UpcomingEventList)
+                        {
+                            <tr>
+                                <td>@item.EventName</td>
+                                <td>@item.EventDate.ToString("dd MMM yyyy")</td>
+                                <td>@item.Location</td>
+                                <td>@item.Enrolments</td>
+                                <td class="text-end"><a asp-action="EventCategories" asp-route-id="@item.EventId">Manage</a></td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    }
+
+    <h2 class="h4">Recent enrolments</h2>
+    @if (Model.RecentEnrolments.Count == 0)
+    {
+        <div class="alert alert-info">No enrolments have been received yet.</div>
+    }
+    else
+    {
+        <div class="card p-3">
+            <div class="table-responsive">
+                <table class="table align-middle mb-0">
+                    <caption class="visually-hidden">Recent enrolments</caption>
+                    <thead><tr><th scope="col">Participant</th><th scope="col">Event</th><th scope="col">Category</th><th scope="col">Enrolled</th><th scope="col">Status</th></tr></thead>
+                    <tbody>
+                        @foreach (var item in Model.RecentEnrolments)
+                        {
+                            <tr>
+                                <td>@item.Participant</td>
+                                <td>@item.Event</td>
+                                <td>@item.Category</td>
+                                <td>@item.EnrolmentDate.ToString("dd MMM yyyy")</td>
+                                <td><span class="badge text-bg-success">@item.Status</span></td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    }
+}

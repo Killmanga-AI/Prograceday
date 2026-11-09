@@ -1,6 +1,54 @@
-@model List<JsonElement>
-@{ViewData["Title"]="My events";}
-<div class="d-flex justify-content-between align-items-center mb-3"><div><h1>My events</h1><p class="text-secondary">Create and manage your sporting events.</p></div><a class="btn btn-primary" asp-action="CreateEvent">+ Create event</a></div>
-@if(ViewBag.Error is string err){<div class="alert alert-warning">@err</div>}
-<div class="row g-3">@foreach(var e in Model){<div class="col-md-6"><div class="card p-3 h-100"><h4>@e.GetProperty("eventName").GetString()</h4><p class="text-secondary">@e.GetProperty("location").GetString() · @e.GetProperty("eventDate").GetDateTime().ToString("dd MMM yyyy")</p><p>@e.GetProperty("eventType").GetString() · @e.GetProperty("eventDistanceKm").GetDecimal() km</p><p>@e.GetProperty("categories").GetInt32() categories · @e.GetProperty("enrolments").GetInt32() enrolments</p><div class="d-flex flex-wrap gap-2 mt-auto"><a class="btn btn-sm btn-primary" asp-action="EventCategories" asp-route-id="@e.GetProperty("eventId").GetInt32()">Categories</a><a class="btn btn-sm btn-outline-secondary" asp-action="Enrolments" asp-route-id="@e.GetProperty("eventId").GetInt32()">Enrolments</a><a class="btn btn-sm btn-outline-secondary" asp-action="Results" asp-route-id="@e.GetProperty("eventId").GetInt32()">Results</a><a class="btn btn-sm btn-outline-secondary" asp-action="EditEvent" asp-route-id="@e.GetProperty("eventId").GetInt32()">Edit</a><form asp-action="DeleteEvent" method="post" onsubmit="return confirm('Delete this event and its related categories, enrolments and results?')"><input type="hidden" name="id" value="@e.GetProperty("eventId").GetInt32()"/><button class="btn btn-sm btn-outline-danger">Delete</button></form></div></div></div>}</div>
-@if(Model.Count==0){<div class="alert alert-info">You have not created any events yet.</div>}
+@model List<OrganiserEventDto>
+@{ ViewData["Title"] = "My events"; }
+<div class="d-flex flex-wrap justify-content-between align-items-end gap-2 mb-3">
+    <div>
+        <h1 class="mb-1">My events</h1>
+        <p class="text-secondary mb-0">Create and manage your sporting events.</p>
+    </div>
+    <a class="btn btn-primary" asp-action="CreateEvent">+ Create event</a>
+</div>
+@if (ViewBag.Error is string error)
+{
+    <div class="alert alert-warning" role="alert">@error</div>
+}
+@if (Model.Count == 0)
+{
+    <div class="card p-5 text-center">
+        <div class="display-6 mb-2">🏁</div>
+        <h2 class="h5">You have not created any events yet</h2>
+        <p class="text-secondary">Create your first event, add categories and open it for enrolments.</p>
+        <a class="btn btn-primary" asp-action="CreateEvent">Create event</a>
+    </div>
+}
+else
+{
+    <div class="row g-3">
+        @foreach (var item in Model)
+        {
+            <div class="col-md-6">
+                <div class="card p-3 h-100">
+                    <div class="d-flex justify-content-between align-items-start gap-2">
+                        <div>
+                            <h2 class="h4 mb-1">@item.EventName</h2>
+                            <p class="text-secondary mb-1">@item.Location · @item.EventDate.ToString("dd MMM yyyy")</p>
+                            <p class="mb-2">@item.EventType · @item.EventDistanceKm km</p>
+                        </div>
+                        <span class="badge text-bg-dark">@item.EventDate.ToString("MMM").ToUpperInvariant()</span>
+                    </div>
+                    <p class="small text-secondary">@item.Categories categor@(item.Categories == 1 ? "y" : "ies") · @item.Enrolments enrolment@(item.Enrolments == 1 ? "" : "s")</p>
+                    <div class="d-flex flex-wrap gap-2 mt-auto">
+                        <a class="btn btn-sm btn-primary" asp-action="EventCategories" asp-route-id="@item.EventId">Categories</a>
+                        <a class="btn btn-sm btn-outline-secondary" asp-action="Enrolments" asp-route-id="@item.EventId">Enrolments</a>
+                        <a class="btn btn-sm btn-outline-secondary" asp-action="Results" asp-route-id="@item.EventId">Results</a>
+                        <a class="btn btn-sm btn-outline-secondary" asp-action="EditEvent" asp-route-id="@item.EventId">Edit</a>
+                        <form asp-action="DeleteEvent" method="post" data-busy
+                              data-confirm="Delete this event and its categories, enrolments and results?">
+                            <input type="hidden" name="id" value="@item.EventId" />
+                            <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+}

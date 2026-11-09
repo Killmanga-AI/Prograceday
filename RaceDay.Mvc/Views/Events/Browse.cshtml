@@ -1,9 +1,74 @@
 @model List<EventDto>
-@{ViewData["Title"]="Browse events";}
-<div class="d-flex justify-content-between align-items-center mb-3"><div><h1>Upcoming events</h1><p class="text-secondary">Find your next challenge.</p></div></div>
-<form method="get" class="card p-3 mb-4"><div class="row g-2"><div class="col-md-6"><input name="search" value="@ViewBag.Search" class="form-control" placeholder="Search event or location"/></div><div class="col-md-3"><select name="type" class="form-select"><option value="">All event types</option><option>Run</option><option>Walk</option><option>Cycle</option></select></div><div class="col-md-3"><button class="btn btn-primary w-100">Search events</button></div></div></form>
-@if(ViewBag.Error is string err){<div class="alert alert-warning">@err</div>}
-<div class="row g-3">
-@foreach(var e in Model){<div class="col-md-6 col-lg-4"><div class="card h-100 overflow-hidden">@if(!string.IsNullOrWhiteSpace(e.BannerImageUrl)){<img src="@e.BannerImageUrl" class="event-banner" alt="Event banner"/>}else{<div class="bg-dark text-white p-4"><span class="display-6">🏁</span><div class="small">RACEDAY EVENT</div></div>}<div class="card-body"><span class="badge text-bg-warning">@e.EventType</span><h4 class="mt-2">@e.EventName</h4><p class="text-secondary mb-2">@e.Location</p><p class="small">@e.EventDate.ToString("dd MMM yyyy · HH:mm") · @e.EventDistanceKm km</p><a class="btn btn-primary" asp-action="Details" asp-route-id="@e.EventId">View event</a></div></div></div>}
+@{ ViewData["Title"] = "Browse events"; }
+<div class="d-flex justify-content-between align-items-end mb-3">
+    <div>
+        <h1 class="mb-1">Upcoming events</h1>
+        <p class="text-secondary mb-0">Find your next challenge.</p>
+    </div>
 </div>
-@if(Model.Count==0){<div class="alert alert-info">No events matched your search.</div>}
+<form method="get" class="card p-3 mb-4" role="search">
+    <div class="row g-2 align-items-end">
+        <div class="col-md-6">
+            <label for="search" class="form-label">Search</label>
+            <input id="search" name="search" value="@ViewBag.Search" class="form-control" placeholder="Event name or location" />
+        </div>
+        <div class="col-md-3">
+            <label for="type" class="form-label">Event type</label>
+            <select id="type" name="type" class="form-select">
+                <option value="">All event types</option>
+                <option value="Run" selected="@(ViewBag.Type == "Run")">Run</option>
+                <option value="Walk" selected="@(ViewBag.Type == "Walk")">Walk</option>
+                <option value="Cycle" selected="@(ViewBag.Type == "Cycle")">Cycle</option>
+            </select>
+        </div>
+        <div class="col-md-3">
+            <button type="submit" class="btn btn-primary w-100">Search events</button>
+        </div>
+    </div>
+</form>
+@if (ViewBag.Error is string error)
+{
+    <div class="alert alert-warning" role="alert">@error</div>
+}
+@if (Model.Count == 0)
+{
+    <div class="card p-5 text-center">
+        <div class="display-6 mb-2">🗓️</div>
+        <h2 class="h5">No events matched your search</h2>
+        <p class="text-secondary mb-3">Try a different search term, or clear the filters to see everything.</p>
+        <a class="btn btn-outline-primary" asp-action="Browse">Clear filters</a>
+    </div>
+}
+else
+{
+    <p class="text-secondary small">@Model.Count event@(Model.Count == 1 ? "" : "s") found.</p>
+    <div class="row g-3">
+        @foreach (var item in Model)
+        {
+            <div class="col-md-6 col-lg-4">
+                <div class="card h-100 overflow-hidden event-card">
+                    @if (!string.IsNullOrWhiteSpace(item.BannerImageUrl))
+                    {
+                        <img src="@item.BannerImageUrl" class="event-banner" alt="Banner for @item.EventName" loading="lazy" />
+                    }
+                    else
+                    {
+                        <div class="event-banner-placeholder">
+                            <span class="display-6">🏁</span>
+                            <span class="small text-uppercase">RaceDay event</span>
+                        </div>
+                    }
+                    <div class="card-body d-flex flex-column">
+                        <span class="badge text-bg-warning align-self-start">@item.EventType</span>
+                        <h2 class="h4 mt-2">@item.EventName</h2>
+                        <p class="text-secondary mb-1">@item.Location</p>
+                        <p class="small mb-3">
+                            @item.EventDate.ToString("dd MMM yyyy · HH:mm") · @item.EventDistanceKm km
+                        </p>
+                        <a class="btn btn-primary mt-auto" asp-action="Details" asp-route-id="@item.EventId">View event</a>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+}

@@ -1,2 +1,15 @@
 @model EventViewModel
-@{ViewData["Title"]="Edit event";}<div class="card form-card p-4"><h1>Edit event</h1><form asp-action="EditEvent" method="post" enctype="multipart/form-data"><partial name="_EventForm" model="Model"/></form></div>
+@{
+    ViewData["Title"] = "Edit event";
+    ViewData["SubmitLabel"] = "Save changes";
+}
+<div class="card form-card p-4">
+    <h1 class="h3">Edit event</h1>
+    <p class="text-secondary">Update the details or replace the banner.</p>
+    <form asp-action="EditEvent" method="post" enctype="multipart/form-data" data-busy>
+        <partial name="_EventForm" model="Model" />
+    </form>
+</div>
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}
