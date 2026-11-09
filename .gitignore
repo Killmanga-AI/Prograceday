@@ -6,3 +6,8 @@ obj/
 *.db
 appsettings.Development.json
 RaceDay_Part2_Implementation.zip
+
+.env
+*.zip
+appsettings.Production.json
+secrets.json
