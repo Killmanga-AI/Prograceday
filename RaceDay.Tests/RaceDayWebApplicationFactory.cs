@@ -21,7 +21,10 @@ public sealed class RaceDayWebApplicationFactory : WebApplicationFactory<Program
             {
                 ["UseInMemoryDatabase"] = "true",
                 ["InMemoryDatabaseName"] = _databaseName,
-                ["Jwt:Key"] = "TEST_ONLY_SIGNING_KEY_FOR_AUTOMATED_TESTS_2026"
+                ["Jwt:Key"] = "TEST_ONLY_SIGNING_KEY_FOR_AUTOMATED_TESTS_2026",
+                // Media tests in this factory prove the Azure provider fails safely
+                // when no storage credentials are configured.
+                ["Media:Provider"] = "Azure"
             });
         });
         builder.ConfigureServices(services =>
