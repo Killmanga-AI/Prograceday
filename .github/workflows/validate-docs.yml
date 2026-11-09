@@ -5,6 +5,7 @@ on:
     branches:
       - main
       - master
+      - part-3-mvc-webapp
   pull_request:
 
 jobs:

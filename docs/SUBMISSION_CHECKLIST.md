@@ -16,20 +16,21 @@
 - [x] GitHub Actions builds, tests, verifies migrations and builds images.
 - [x] README covers setup, configuration, tests, Docker and endpoints.
 - [x] Rubric mapping, implementation notes and test results in `docs/`.
-- [x] 22 commits on `part-3-mvc-webapp` on top of `part-2-rest-api` (far more including Part 1/2 history).
+- [x] 25 meaningful Part 3 commits on `part-3-mvc-webapp` on top of `part-2-rest-api`.
 
 ## Before you submit
 
-- [ ] Push `part-3-mvc-webapp` to your GitHub repository and confirm the Actions run is green.
+- [x] Push `part-3-mvc-webapp` to your GitHub repository and confirm the Actions run is green.
 - [x] Built and started the Compose stack locally; all three services healthy and the register → login → create-event → MVC login flow passed.
 - [x] Applied migrations to SQL Server 2022 in Compose (automatic startup migration) and confirmed `/health` reports the database connected.
 - [ ] Repeat the Compose run on the submission machine and click through both roles in a browser.
+- [ ] Capture a screenshot of the successful Part 3 Actions run; the existing CI screenshots are from earlier runs.
 - [ ] If required, configure Azure Blob Storage and upload a banner and profile picture; otherwise state that the local provider was used.
 - [ ] Record the unlisted YouTube demo using `docs/DEMO_SCRIPT.md` and replace the README placeholder.
 - [ ] Add any institution-required cover page or declaration.
 - [ ] Review the AI-use disclosure and make it accurate.
-- [ ] Create the final ZIP **without** `.git/`, `bin/`, `obj/`, `.env`, user secrets or databases.
-- [ ] Verify the ZIP contains `README.md`, `docs/`, both Dockerfiles, `docker-compose.yml`, `.env.example` and the solution.
+- [x] Create the final ZIP **without** `.git/`, `bin/`, `obj/`, `.env`, user secrets or databases.
+- [x] Verify the ZIP contains `README.md`, `docs/`, both Dockerfiles, `docker-compose.yml`, `.env.example` and the solution.
 
 ## Suggested ZIP command (from the repository root)
 
