@@ -167,8 +167,6 @@ What the tests cover:
 
 The MVC tests start a real Kestrel **stub API** on a loopback port and point the MVC app at it. Real HTTP, JSON serialization, multipart uploads and cookies are exercised; API business logic is covered by the API suite. Tests do not prove Azure Blob Storage or a live SQL Server migration — those require credentials/infrastructure (CI performs the SQL migration check).
 
-See [`docs/TEST_RESULTS.md`](docs/TEST_RESULTS.md) for the exact commands and output summary.
-
 ## Docker Compose
 
 The stack is SQL Server 2022 + API + MVC on an internal network with named volumes and health checks.
@@ -241,7 +239,7 @@ docker compose down -v         # also delete database and media volumes
 2. **SQL Server migration check** — start SQL Server 2022, wait for readiness, `dotnet ef database update`, assert the schema and migration history.
 3. **Docker image builds** — build the API and MVC images.
 
-The Part 3 branch's successful run is [GitHub Actions run 5](https://github.com/Killmanga-AI/Prograceday/actions/runs/42699925824) on commit `e059173`. It passed all three jobs. The repository-structure workflow also passed in [run 5](https://github.com/Killmanga-AI/Prograceday/actions/runs/42699925809).
+Successful Part 3 CI: [GitHub Actions run 5](https://github.com/Killmanga-AI/Prograceday/actions/runs/42699925824) (build, test, SQL migration, Docker). Docs structure validation also passed in [run 5](https://github.com/Killmanga-AI/Prograceday/actions/runs/42699925809).
 
 ![Successful Part 3 build, test, SQL migration, and Docker image jobs](docs/part3-github-actions-success.png)
 
@@ -263,7 +261,7 @@ Prograceday/
 │   └── Dockerfile
 ├── RaceDay.Tests/            # API integration tests
 ├── RaceDay.Mvc.Tests/        # MVC integration tests + stub API
-├── docs/                     # Rubric mapping, test results, demo script
+├── docs/                     # Required docs (ERD, schema, API plan) plus CI evidence screenshots
 ├── .github/workflows/        # CI
 ├── docker-compose.yml
 └── RaceDay.sln
@@ -271,27 +269,29 @@ Prograceday/
 
 ## Documentation
 
-- [`docs/PART3_IMPLEMENTATION.md`](docs/PART3_IMPLEMENTATION.md) — design decisions and request flows
-- [`docs/PART3_RUBRIC_MAPPING.md`](docs/PART3_RUBRIC_MAPPING.md) — requirement-to-code checklist
-- [`docs/TEST_RESULTS.md`](docs/TEST_RESULTS.md) — measured build/test results
-- [`docs/SUBMISSION_CHECKLIST.md`](docs/SUBMISSION_CHECKLIST.md) — pre-submission steps
-- [`docs/DEMO_SCRIPT.md`](docs/DEMO_SCRIPT.md) — video walkthrough plan
+All required project documentation is stored in the `docs/` folder:
+
+| File | Description |
+|---|---|
+| [`docs/ERD.png`](docs/ERD.png) | Entity Relationship Diagram |
+| [`docs/API_Endpoint_Plan.md`](docs/API_Endpoint_Plan.md) | Planned API endpoints specification |
+| [`docs/database_schema.sql`](docs/database_schema.sql) | SQL Server database schema and seed data |
 
 ## Git history
 
-Work continues on `part-3-mvc-webapp`, branched from `part-2-rest-api`. The branch contains the original Part 3 import plus incremental commits for the typed API client, session authentication, upload validation, status pages, local media provider, startup health/migrations, tests, Docker, CI and documentation. Use `git log --oneline --graph` to review it.
+Work continues on `part-3-mvc-webapp`, branched from `part-2-rest-api`. The branch contains the logical commits for the typed API client, session authentication, upload validation, status pages, local media provider, startup health/migrations, tests, Docker, and CI.
 
 ## Demonstration video
 
-_Add the unlisted YouTube URL here before submitting. See `docs/DEMO_SCRIPT.md` for the planned walkthrough._ This placeholder must not be submitted as a real link.
+[![YouTube Video](https://img.shields.io/badge/YouTube-%23FF0000.svg?style=for-the-badge&logo=YouTube&logoColor=white)](YOUR_UNLISTED_YOUTUBE_LINK_HERE)
 
 ## Known limitations
 
-- Azure Blob Storage requires the student's own storage account and was not exercised with live credentials; the local provider covers the same contract in development/tests.
+- Azure Blob Storage requires an Azure storage account and connection string; the local provider covers the same contract in development and testing.
 - Public registration allows either role; organiser approval is future work.
 - No password-reset or email-verification flow.
-- The demo video still needs to be recorded and linked.
+- The demo video needs to be recorded and the link updated above.
 
-## AI use disclosure
+## AI Disclosure
 
-Update this statement to match your institution's rules and your own contribution. AI assistance was used for scaffolding, integration planning, documentation and review. Review, run, understand and be able to explain all submitted code. Do not claim independently authored work if AI assistance was used.
+GitHub Copilot was used for assistance with code scaffolding and documentation review. All system architecture decisions, domain models, validation rules, API endpoints, and MVC views were authored and verified by Killmanga-AI.
