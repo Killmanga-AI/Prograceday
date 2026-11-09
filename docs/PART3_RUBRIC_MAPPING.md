@@ -30,9 +30,9 @@ Status reflects the submitted branch `part-3-mvc-webapp`:
 | Profile picture upload | `ProfileController`, API media endpoint | Done |
 | Azure Blob Storage integration | `RaceDay.Api/Services/AzureBlobStorageService.cs`; selected with `Media:Provider=Azure` | Manual — needs Azure credentials |
 | Local media fallback for development/tests | `Services/LocalBlobStorageService.cs` | Done |
-| MVC and API Dockerfiles | `RaceDay.Mvc/Dockerfile`, `RaceDay.Api/Dockerfile` | Done (built in CI) |
-| Compose stack with SQL Server, networking, volumes, health checks | `docker-compose.yml`, `.env.example` | Done (`docker compose config` validated; not run locally) |
-| Database migration | `20261109190000_AddPart3ImageUrls`, `dotnet ef` | Done (CI SQL Server job) |
+| MVC and API Dockerfiles | `RaceDay.Mvc/Dockerfile`, `RaceDay.Api/Dockerfile` | Done (built and run locally) |
+| Compose stack with SQL Server, networking, volumes, health checks | `docker-compose.yml`, `.env.example` | Done (built, started and smoke-tested locally) |
+| Database migration | `20261109190000_AddPart3ImageUrls`, `dotnet ef` | Done (applied to the container and in the CI SQL Server job) |
 | Automated API tests | `RaceDay.Tests` — 29 passing | Done |
 | Automated MVC tests | `RaceDay.Mvc.Tests` — 40 passing | Done |
 | GitHub Actions CI | `.github/workflows/dotnet.yml` | Done (runs on push) |

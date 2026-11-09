@@ -194,7 +194,7 @@ docker compose down            # keep volumes
 docker compose down -v         # also delete database and media volumes
 ```
 
-**Verification status:** the Compose model is validated with `docker compose config`. The Docker daemon was not running on the authoring machine, so the images were **not** built or run there. The CI workflow builds both images on every push.
+**Verified locally (2026-11-09):** `docker compose up -d --build` built `raceday-api:local` (386 MB) and `raceday-mvc:local` (332 MB); SQL Server, API and MVC all reported healthy. `/health` returned `{"status":"ok","database":"connected","storage":"Local"}`, Swagger loaded, registration → login → event creation succeeded, and an MVC login redirected to the organiser dashboard. The CI workflow repeats the image builds on every push.
 
 ## API endpoints
 
@@ -281,7 +281,6 @@ _Add the unlisted YouTube URL here before submitting. See `docs/DEMO_SCRIPT.md` 
 
 ## Known limitations
 
-- The Docker stack was not executed on the authoring machine (daemon unavailable); CI builds the images and the Compose model validates.
 - Azure Blob Storage requires the student's own storage account and was not exercised with live credentials; the local provider covers the same contract in development/tests.
 - Public registration allows either role; organiser approval is future work.
 - No password-reset or email-verification flow.

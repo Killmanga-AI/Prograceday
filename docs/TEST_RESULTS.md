@@ -39,13 +39,38 @@ The MVC suite hosts the real application with `WebApplicationFactory` and a Kest
 - profile updates;
 - 404/500 status pages and `no-store` headers on authenticated pages.
 
+## Docker Compose smoke test
+
+```text
+docker compose up -d --build
+```
+
+Built `raceday-api:local` (386 MB) and `raceday-mvc:local` (332 MB), then started the three services. `docker compose ps` reported:
+
+```text
+raceday-api | Up (healthy)
+raceday-mvc | Up (healthy)
+sqlserver   | Up (healthy)
+```
+
+| Check | Result |
+|---|---|
+| `GET http://localhost:8081/health` | `200` — `{"status":"ok","database":"connected","storage":"Local"}` |
+| Swagger JSON | `200` |
+| `GET http://localhost:8080/` | `200` — title `Home · RaceDay` |
+| `GET /Account/Login` | `200` |
+| Anonymous `GET /Organiser/Dashboard` | `302` to login |
+| Unknown path | `404` with the friendly status page |
+| API register → login → create event | Token issued; event created with `201` and returned by `GET /api/events` |
+| MVC form login (cookie + antiforgery) | `302` to `/Organiser/Dashboard`; dashboard `200` and shows the organiser name |
+
+SQL Server 2022 was migrated automatically by the API container (`Database:AutoMigrate=true`) and the health check reported the database connected.
+
 ## Not covered by these runs
 
 | Area | Status |
 |---|---|
-| SQL Server migration | Not run locally; the CI workflow applies migrations to SQL Server 2022 and asserts the schema |
-| Docker image build/run | Not run locally (daemon unavailable); CI builds both images |
-| Azure Blob Storage | Not exercised without a storage account; local provider tested instead |
-| Browser/visual review | Pages are covered by HTML assertions; no screenshot review recorded |
+| Azure Blob Storage | Not exercised without a storage account; the local provider was used in tests and containers |
+| Browser/visual review | Pages are covered by HTML assertions and container smoke checks; no screenshot review recorded |
 
 Do not present the unchecked rows as passes.
