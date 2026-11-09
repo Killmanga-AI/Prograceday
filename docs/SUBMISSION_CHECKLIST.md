@@ -16,7 +16,7 @@
 - [x] GitHub Actions builds, tests, verifies migrations and builds images.
 - [x] README covers setup, configuration, tests, Docker and endpoints.
 - [x] Rubric mapping, implementation notes and test results in `docs/`.
-- [x] 25 meaningful Part 3 commits on `part-3-mvc-webapp` on top of `part-2-rest-api`.
+- [x] 26 meaningful Part 3 commits on `part-3-mvc-webapp` on top of `part-2-rest-api`.
 
 ## Before you submit
 
@@ -24,7 +24,7 @@
 - [x] Built and started the Compose stack locally; all three services healthy and the register → login → create-event → MVC login flow passed.
 - [x] Applied migrations to SQL Server 2022 in Compose (automatic startup migration) and confirmed `/health` reports the database connected.
 - [ ] Repeat the Compose run on the submission machine and click through both roles in a browser.
-- [ ] Capture a screenshot of the successful Part 3 Actions run; the existing CI screenshots are from earlier runs.
+- [x] Capture screenshots of the successful Part 3 build/test/migration/Docker run and docs validation (`docs/part3-github-actions-success.png`, `docs/part3-docs-validation-success.png`).
 - [ ] If required, configure Azure Blob Storage and upload a banner and profile picture; otherwise state that the local provider was used.
 - [ ] Record the unlisted YouTube demo using `docs/DEMO_SCRIPT.md` and replace the README placeholder.
 - [ ] Add any institution-required cover page or declaration.

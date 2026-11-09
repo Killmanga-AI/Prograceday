@@ -2,6 +2,19 @@
 
 Measured on 2026-11-09 on Windows with .NET SDK 10.0.401 targeting `net8.0` (runtime 8.0.32).
 
+## GitHub Actions
+
+The pushed Part 3 branch run for commit `e059173c90724421c46b16c47323b6423d978c7d` completed successfully:
+
+- [RaceDay CI run 5](https://github.com/Killmanga-AI/Prograceday/actions/runs/42699925824): build and tests, SQL Server migration/schema check, and API/MVC Docker image builds all passed.
+- [Validate Docs Structure run 5](https://github.com/Killmanga-AI/Prograceday/actions/runs/42699925809): required repository documentation checks passed.
+
+Screenshots captured from the public GitHub Actions run pages:
+
+![Successful Part 3 CI run showing all three jobs](part3-github-actions-success.png)
+
+![Successful docs structure validation run](part3-docs-validation-success.png)
+
 ## Build
 
 ```text

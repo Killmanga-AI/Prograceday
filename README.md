@@ -241,6 +241,12 @@ docker compose down -v         # also delete database and media volumes
 2. **SQL Server migration check** — start SQL Server 2022, wait for readiness, `dotnet ef database update`, assert the schema and migration history.
 3. **Docker image builds** — build the API and MVC images.
 
+The Part 3 branch's successful run is [GitHub Actions run 5](https://github.com/Killmanga-AI/Prograceday/actions/runs/42699925824) on commit `e059173`. It passed all three jobs. The repository-structure workflow also passed in [run 5](https://github.com/Killmanga-AI/Prograceday/actions/runs/42699925809).
+
+![Successful Part 3 build, test, SQL migration, and Docker image jobs](docs/part3-github-actions-success.png)
+
+![Successful repository documentation structure validation](docs/part3-docs-validation-success.png)
+
 ## Repository layout
 
 ```text
