@@ -256,6 +256,101 @@ public sealed class EventAndEnrolmentTests
         Assert.Equal(enrolmentId, results.RootElement[0].GetProperty("enrolmentId").GetInt32());
     }
 
+
+    [Fact]
+    public async Task EventsAndCategoriesCanBeBrowsedWithoutLogin()
+    {
+        using var client = _factory.CreateClient();
+        var token = await RegisterAndLoginAsync(client, "Organiser");
+        var eventId = await CreateEventAsync(client, token);
+        var categoryId = await CreateCategoryAsync(client, token, eventId, 20);
+
+        var eventsResponse = await client.GetAsync("/api/events");
+        Assert.Equal(HttpStatusCode.OK, eventsResponse.StatusCode);
+        using var events = JsonDocument.Parse(await eventsResponse.Content.ReadAsStringAsync());
+        Assert.Contains(events.RootElement.EnumerateArray(), item => item.GetProperty("eventId").GetInt32() == eventId);
+
+        var categoriesResponse = await client.GetAsync($"/api/events/{eventId}/categories");
+        Assert.Equal(HttpStatusCode.OK, categoriesResponse.StatusCode);
+        using var categories = JsonDocument.Parse(await categoriesResponse.Content.ReadAsStringAsync());
+        Assert.Equal(categoryId, categories.RootElement[0].GetProperty("categoryId").GetInt32());
+    }
+
+    [Fact]
+    public async Task OrganiserDashboardIsScopedToAuthenticatedOrganiser()
+    {
+        using var client = _factory.CreateClient();
+        var ownerToken = await RegisterAndLoginAsync(client, "Organiser");
+        var otherToken = await RegisterAndLoginAsync(client, "Organiser");
+        await CreateEventAsync(client, ownerToken);
+
+        using var ownerRequest = AuthorizedRequest(HttpMethod.Get, "/api/organiser/dashboard", ownerToken);
+        var ownerResponse = await client.SendAsync(ownerRequest);
+        Assert.Equal(HttpStatusCode.OK, ownerResponse.StatusCode);
+        using var ownerDashboard = JsonDocument.Parse(await ownerResponse.Content.ReadAsStringAsync());
+        Assert.Equal(1, ownerDashboard.RootElement.GetProperty("totalEvents").GetInt32());
+
+        using var otherRequest = AuthorizedRequest(HttpMethod.Get, "/api/organiser/dashboard", otherToken);
+        var otherResponse = await client.SendAsync(otherRequest);
+        using var otherDashboard = JsonDocument.Parse(await otherResponse.Content.ReadAsStringAsync());
+        Assert.Equal(0, otherDashboard.RootElement.GetProperty("totalEvents").GetInt32());
+    }
+
+    [Fact]
+    public async Task ParticipantResultsIncludeEventDateAndTotalFinishers()
+    {
+        using var client = _factory.CreateClient();
+        var organiserToken = await RegisterAndLoginAsync(client, "Organiser");
+        var participantToken = await RegisterAndLoginAsync(client, "Participant");
+        var eventId = await CreateEventAsync(client, organiserToken);
+        var categoryId = await CreateCategoryAsync(client, organiserToken, eventId, 10);
+        using var enrolRequest = AuthorizedRequest(HttpMethod.Post, $"/api/categories/{categoryId}/enrolments", participantToken);
+        var enrolResponse = await client.SendAsync(enrolRequest);
+        using var enrolment = JsonDocument.Parse(await enrolResponse.Content.ReadAsStringAsync());
+        var enrolmentId = enrolment.RootElement.GetProperty("enrolmentId").GetInt32();
+
+        using var resultRequest = AuthorizedRequest(HttpMethod.Post, $"/api/enrolments/{enrolmentId}/results", organiserToken, new { finishTime = "00:30:00", position = 1 });
+        Assert.Equal(HttpStatusCode.Created, (await client.SendAsync(resultRequest)).StatusCode);
+
+        using var mineRequest = AuthorizedRequest(HttpMethod.Get, "/api/users/me/results", participantToken);
+        var response = await client.SendAsync(mineRequest);
+        using var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        var item = body.RootElement[0];
+        Assert.True(item.TryGetProperty("eventDate", out _));
+        Assert.Equal(1, item.GetProperty("totalFinishers").GetInt32());
+    }
+
+
+    [Fact]
+    public async Task EventBannerUploadRejectsUnsupportedFileTypesAndReportsMissingAzureConfiguration()
+    {
+        using var client = _factory.CreateClient();
+        var organiserToken = await RegisterAndLoginAsync(client, "Organiser");
+        var eventId = await CreateEventAsync(client, organiserToken);
+
+        using (var unsupported = new MultipartFormDataContent())
+        {
+            var pdf = new ByteArrayContent([1, 2, 3, 4]);
+            pdf.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/pdf");
+            unsupported.Add(pdf, "file", "document.pdf");
+            using var request = new HttpRequestMessage(HttpMethod.Post, $"/api/events/{eventId}/banner") { Content = unsupported };
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", organiserToken);
+            var response = await client.SendAsync(request);
+            Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        }
+
+        using (var acceptedType = new MultipartFormDataContent())
+        {
+            var image = new ByteArrayContent([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00, 0x00, 0x00]);
+            image.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("image/png");
+            acceptedType.Add(image, "file", "banner.png");
+            using var request = new HttpRequestMessage(HttpMethod.Post, $"/api/events/{eventId}/banner") { Content = acceptedType };
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", organiserToken);
+            var response = await client.SendAsync(request);
+            Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
+        }
+    }
+
     private static async Task<string> RegisterAndLoginAsync(HttpClient client, string role)
     {
         var email = $"{role.ToLowerInvariant()}-{Guid.NewGuid():N}@example.com";
