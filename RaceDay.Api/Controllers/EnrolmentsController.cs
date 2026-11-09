@@ -103,7 +103,13 @@ public sealed class EnrolmentsController(RaceDayContext db) : ApiControllerBase
                 enrolment.EnrolmentId,
                 enrolment.CategoryId,
                 Category = enrolment.Category!.CategoryName,
+                EventId = enrolment.Category!.Event!.EventId,
                 Event = enrolment.Category!.Event!.EventName,
+                EventDate = enrolment.Category!.Event!.EventDate,
+                EventLocation = enrolment.Category!.Event!.Location,
+                EventType = enrolment.Category!.Event!.EventType,
+                EventBannerImageUrl = enrolment.Category!.Event!.BannerImageUrl,
+                DistanceKm = enrolment.Category!.DistanceKm,
                 enrolment.EnrolmentDate,
                 enrolment.Status
             })
@@ -224,8 +230,13 @@ public sealed class EnrolmentsController(RaceDayContext db) : ApiControllerBase
             {
                 result.ResultId,
                 result.EnrolmentId,
+                EventId = result.Enrolment!.Category!.Event!.EventId,
                 Event = result.Enrolment!.Category!.Event!.EventName,
+                EventDate = result.Enrolment!.Category!.Event!.EventDate,
+                EventLocation = result.Enrolment!.Category!.Event!.Location,
                 Category = result.Enrolment!.Category!.CategoryName,
+                DistanceKm = result.Enrolment!.Category!.DistanceKm,
+                TotalFinishers = db.Results.Count(other => other.Enrolment!.CategoryId == result.Enrolment!.CategoryId),
                 result.FinishTime,
                 result.Position,
                 result.RecordedAt
