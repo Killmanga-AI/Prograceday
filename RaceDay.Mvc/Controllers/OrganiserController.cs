@@ -8,117 +8,269 @@ namespace RaceDay.Mvc.Controllers;
 [SessionAuthorize("Organiser")]
 public sealed class OrganiserController(RaceDayApiClient api) : Controller
 {
-    public async Task<IActionResult> Dashboard()
+    [HttpGet]
+    public async Task<IActionResult> Dashboard(CancellationToken cancellationToken = default)
     {
-        var r=await api.GetAsync<System.Text.Json.JsonElement>("api/organiser/dashboard");
-        ViewBag.Error=r.Error; return View(r.Data);
-    }
-    public async Task<IActionResult> Events()
-    {
-        var r=await api.GetAsync<List<System.Text.Json.JsonElement>>("api/organiser/events");
-        ViewBag.Error=r.Error; return View(r.Data ?? []);
-    }
-    [HttpGet] public IActionResult CreateEvent() => View(new EventViewModel());
-    [HttpPost, ValidateAntiForgeryToken]
-    public async Task<IActionResult> CreateEvent(EventViewModel model)
-    {
-        if(!ModelState.IsValid) return View(model);
-        var r=await api.PostAsync<EventDto>("api/events",new {model.EventName,model.Description,model.EventDate,model.Location,model.RouteInfo,model.EventDistanceKm,model.EventType});
-        if(!r.Success || r.Data is null) { ModelState.AddModelError("",r.Error??"Could not create event."); return View(model); }
-        if(model.Banner is not null)
-        {
-            var upload=await api.UploadAsync<System.Text.Json.JsonElement>($"api/events/{r.Data.EventId}/banner",model.Banner);
-            if(!upload.Success) TempData["Error"]="Event created, but banner upload failed: "+upload.Error;
-        }
-        TempData["Success"]="Event created.";
-        return RedirectToAction(nameof(EventCategories),new{id=r.Data.EventId});
-    }
-    [HttpGet] public async Task<IActionResult> EditEvent(int id)
-    {
-        if(!await OwnsEventAsync(id)) return RedirectToAction(nameof(Events));
-        var r=await api.GetAsync<EventDto>($"api/events/{id}");
-        if(!r.Success || r.Data is null) return NotFound();
-        var e=r.Data;
-        return View(new EventViewModel{EventId=e.EventId,EventName=e.EventName,Description=e.Description,EventDate=e.EventDate,Location=e.Location,RouteInfo=e.RouteInfo,EventDistanceKm=e.EventDistanceKm,EventType=e.EventType,BannerImageUrl=e.BannerImageUrl});
-    }
-    [HttpPost, ValidateAntiForgeryToken]
-    public async Task<IActionResult> EditEvent(EventViewModel model)
-    {
-        if(!ModelState.IsValid) return View(model);
-        var r=await api.PutAsync<EventDto>($"api/events/{model.EventId}",new {model.EventName,model.Description,model.EventDate,model.Location,model.RouteInfo,model.EventDistanceKm,model.EventType});
-        if(!r.Success) { ModelState.AddModelError("",r.Error??"Update failed."); return View(model); }
-        if(model.Banner is not null)
-        {
-            var upload=await api.UploadAsync<System.Text.Json.JsonElement>($"api/events/{model.EventId}/banner",model.Banner);
-            if(!upload.Success) TempData["Error"]="Event updated, but banner upload failed: "+upload.Error;
-        }
-        TempData["Success"]="Event updated."; return RedirectToAction(nameof(Events));
-    }
-    [HttpPost, ValidateAntiForgeryToken]
-    public async Task<IActionResult> DeleteEvent(int id)
-    {
-        var r=await api.DeleteAsync<bool>($"api/events/{id}");
-        TempData[r.Success?"Success":"Error"]=r.Success?"Event deleted.":r.Error;
-        return RedirectToAction(nameof(Events));
-    }
-    public async Task<IActionResult> EventCategories(int id)
-    {
-        if(!await OwnsEventAsync(id)) return RedirectToAction(nameof(Events));
-        var ev=await api.GetAsync<EventDto>($"api/events/{id}");
-        if(!ev.Success || ev.Data is null) return NotFound();
-        var cats=await api.GetAsync<List<CategoryDto>>($"api/events/{id}/categories");
-        ViewBag.Event=ev.Data; ViewBag.Error=cats.Error; return View(cats.Data??[]);
-    }
-    [HttpPost, ValidateAntiForgeryToken]
-    public async Task<IActionResult> AddCategory(CategoryViewModel model)
-    {
-        if(!ModelState.IsValid) { TempData["Error"]="Please provide a valid category."; return RedirectToAction(nameof(EventCategories),new{id=model.EventId}); }
-        var r=await api.PostAsync<System.Text.Json.JsonElement>($"api/events/{model.EventId}/categories",new{model.CategoryName,model.DistanceKm,model.MaxParticipants});
-        TempData[r.Success?"Success":"Error"]=r.Success?"Category added.":r.Error;
-        return RedirectToAction(nameof(EventCategories),new{id=model.EventId});
-    }
-    [HttpPost, ValidateAntiForgeryToken]
-    public async Task<IActionResult> UpdateCategory(CategoryViewModel model)
-    {
-        var r=await api.PutAsync<System.Text.Json.JsonElement>($"api/categories/{model.CategoryId}",new{model.CategoryName,model.DistanceKm,model.MaxParticipants});
-        TempData[r.Success?"Success":"Error"]=r.Success?"Category updated.":r.Error;
-        return RedirectToAction(nameof(EventCategories),new{id=model.EventId});
-    }
-    [HttpPost, ValidateAntiForgeryToken]
-    public async Task<IActionResult> DeleteCategory(int id,int eventId)
-    {
-        var r=await api.DeleteAsync<bool>($"api/categories/{id}");
-        TempData[r.Success?"Success":"Error"]=r.Success?"Category deleted.":r.Error;
-        return RedirectToAction(nameof(EventCategories),new{id=eventId});
-    }
-    public async Task<IActionResult> Enrolments(int id)
-    {
-        var ev=await api.GetAsync<EventDto>($"api/events/{id}");
-        if(!ev.Success || ev.Data is null) return NotFound();
-        var r=await api.GetAsync<List<System.Text.Json.JsonElement>>($"api/events/{id}/enrolments");
-        ViewBag.Event=ev.Data; ViewBag.Error=r.Error; return View(r.Data??[]);
-    }
-    public async Task<IActionResult> Results(int id)
-    {
-        var ev=await api.GetAsync<EventDto>($"api/events/{id}");
-        if(!ev.Success || ev.Data is null) return NotFound();
-        var enrol=await api.GetAsync<List<System.Text.Json.JsonElement>>($"api/events/{id}/enrolments");
-        if(!enrol.Success) { TempData["Error"]=enrol.Error??"You cannot manage this event."; return RedirectToAction(nameof(Events)); }
-        var results=await api.GetAsync<List<System.Text.Json.JsonElement>>($"api/events/{id}/results");
-        ViewBag.Event=ev.Data; ViewBag.Enrolments=enrol.Data??[]; ViewBag.Error=results.Error; return View(results.Data??[]);
-    }
-    [HttpPost, ValidateAntiForgeryToken]
-    public async Task<IActionResult> AddResult(ResultViewModel model,int eventId)
-    {
-        var r=await api.PostAsync<System.Text.Json.JsonElement>($"api/enrolments/{model.EnrolmentId}/results",new{model.FinishTime,model.Position});
-        TempData[r.Success?"Success":"Error"]=r.Success?"Result recorded.":r.Error;
-        return RedirectToAction(nameof(Results),new{id=eventId});
+        var result = await api.GetAsync<DashboardDto>("api/organiser/dashboard", cancellationToken);
+        ViewBag.Error = result.Success ? null : result.Error;
+        return View(result.Data);
     }
 
-    private async Task<bool> OwnsEventAsync(int id)
+    [HttpGet]
+    public async Task<IActionResult> Events(CancellationToken cancellationToken = default)
     {
-        var mine=await api.GetAsync<List<System.Text.Json.JsonElement>>("api/organiser/events");
-        return mine.Success && mine.Data is not null && mine.Data.Any(item =>
-            item.GetProperty("eventId").GetInt32() == id);
+        var result = await api.GetAsync<List<OrganiserEventDto>>("api/organiser/events", cancellationToken);
+        ViewBag.Error = result.Success ? null : result.Error;
+        return View(result.Data ?? []);
+    }
+
+    [HttpGet]
+    public IActionResult CreateEvent() => View(new EventViewModel());
+
+    [HttpPost, ValidateAntiForgeryToken]
+    public async Task<IActionResult> CreateEvent(EventViewModel model, CancellationToken cancellationToken = default)
+    {
+        if (!ModelState.IsValid) return View(model);
+
+        var result = await api.PostAsync<EventDto>(
+            "api/events",
+            new { model.EventName, model.Description, model.EventDate, model.Location, model.RouteInfo, model.EventDistanceKm, model.EventType },
+            cancellationToken);
+
+        if (!result.Success || result.Data is null)
+        {
+            ModelState.AddModelError(string.Empty, result.Error ?? "Could not create the event.");
+            return View(model);
+        }
+
+        TempData["Success"] = "Event created. Add at least one category so participants can enrol.";
+
+        if (model.Banner is not null)
+        {
+            var upload = await api.UploadAsync<MediaUploadResponse>(
+                $"api/events/{result.Data.EventId}/banner",
+                model.Banner,
+                cancellationToken);
+            if (!upload.Success)
+                TempData["Error"] = $"Event created, but the banner upload failed: {upload.Error}";
+        }
+
+        return RedirectToAction(nameof(EventCategories), new { id = result.Data.EventId });
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> EditEvent(int id, CancellationToken cancellationToken = default)
+    {
+        if (!await OwnsEventAsync(id, cancellationToken)) return RedirectToAction(nameof(Events));
+
+        var result = await api.GetAsync<EventDto>($"api/events/{id}", cancellationToken);
+        if (!result.Success || result.Data is null) return NotFound();
+
+        var item = result.Data;
+        return View(new EventViewModel
+        {
+            EventId = item.EventId,
+            EventName = item.EventName,
+            Description = item.Description,
+            EventDate = item.EventDate,
+            Location = item.Location,
+            RouteInfo = item.RouteInfo,
+            EventDistanceKm = item.EventDistanceKm,
+            EventType = item.EventType,
+            BannerImageUrl = item.BannerImageUrl
+        });
+    }
+
+    [HttpPost, ValidateAntiForgeryToken]
+    public async Task<IActionResult> EditEvent(EventViewModel model, CancellationToken cancellationToken = default)
+    {
+        if (!ModelState.IsValid) return View(model);
+        if (!await OwnsEventAsync(model.EventId, cancellationToken)) return RedirectToAction(nameof(Events));
+
+        var result = await api.PutAsync<EventDto>(
+            $"api/events/{model.EventId}",
+            new { model.EventName, model.Description, model.EventDate, model.Location, model.RouteInfo, model.EventDistanceKm, model.EventType },
+            cancellationToken);
+
+        if (!result.Success)
+        {
+            ModelState.AddModelError(string.Empty, result.Error ?? "The event could not be updated.");
+            return View(model);
+        }
+
+        if (model.Banner is not null)
+        {
+            var upload = await api.UploadAsync<MediaUploadResponse>(
+                $"api/events/{model.EventId}/banner",
+                model.Banner,
+                cancellationToken);
+            TempData[upload.Success ? "Success" : "Error"] = upload.Success
+                ? "Event and banner updated."
+                : $"Event updated, but the banner upload failed: {upload.Error}";
+        }
+        else
+        {
+            TempData["Success"] = "Event updated.";
+        }
+
+        return RedirectToAction(nameof(Events));
+    }
+
+    [HttpPost, ValidateAntiForgeryToken]
+    public async Task<IActionResult> DeleteEvent(int id, CancellationToken cancellationToken = default)
+    {
+        if (!await OwnsEventAsync(id, cancellationToken))
+        {
+            TempData["Error"] = "You can only delete your own events.";
+            return RedirectToAction(nameof(Events));
+        }
+
+        var result = await api.DeleteAsync<bool>($"api/events/{id}", cancellationToken);
+        TempData[result.Success ? "Success" : "Error"] = result.Success
+            ? "Event deleted."
+            : result.Error ?? "The event could not be deleted.";
+
+        return RedirectToAction(nameof(Events));
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> EventCategories(int id, CancellationToken cancellationToken = default)
+    {
+        if (!await OwnsEventAsync(id, cancellationToken)) return RedirectToAction(nameof(Events));
+
+        var eventResult = await api.GetAsync<EventDto>($"api/events/{id}", cancellationToken);
+        if (!eventResult.Success || eventResult.Data is null) return NotFound();
+
+        var categories = await api.GetAsync<List<CategoryDto>>($"api/events/{id}/categories", cancellationToken);
+        ViewBag.Event = eventResult.Data;
+        ViewBag.Error = categories.Success ? null : categories.Error;
+        return View(categories.Data ?? []);
+    }
+
+    [HttpPost, ValidateAntiForgeryToken]
+    public async Task<IActionResult> AddCategory(CategoryViewModel model, CancellationToken cancellationToken = default)
+    {
+        if (!ModelState.IsValid)
+        {
+            var messages = string.Join(" ", ModelState.Values
+                .SelectMany(value => value.Errors)
+                .Select(error => error.ErrorMessage)
+                .Where(message => !string.IsNullOrWhiteSpace(message)));
+            TempData["Error"] = string.IsNullOrWhiteSpace(messages)
+                ? "Please provide a valid category."
+                : messages;
+            return RedirectToAction(nameof(EventCategories), new { id = model.EventId });
+        }
+
+        var result = await api.PostAsync<CategoryDto>(
+            $"api/events/{model.EventId}/categories",
+            new { model.CategoryName, model.DistanceKm, model.MaxParticipants },
+            cancellationToken);
+
+        TempData[result.Success ? "Success" : "Error"] = result.Success
+            ? "Category added."
+            : result.Error ?? "The category could not be added.";
+
+        return RedirectToAction(nameof(EventCategories), new { id = model.EventId });
+    }
+
+    [HttpPost, ValidateAntiForgeryToken]
+    public async Task<IActionResult> UpdateCategory(CategoryViewModel model, CancellationToken cancellationToken = default)
+    {
+        if (!ModelState.IsValid)
+        {
+            TempData["Error"] = "Category details are invalid. Check the name, distance and capacity.";
+            return RedirectToAction(nameof(EventCategories), new { id = model.EventId });
+        }
+
+        var result = await api.PutAsync<CategoryDto>(
+            $"api/categories/{model.CategoryId}",
+            new { model.CategoryName, model.DistanceKm, model.MaxParticipants },
+            cancellationToken);
+
+        TempData[result.Success ? "Success" : "Error"] = result.Success
+            ? "Category updated."
+            : result.Error ?? "The category could not be updated.";
+
+        return RedirectToAction(nameof(EventCategories), new { id = model.EventId });
+    }
+
+    [HttpPost, ValidateAntiForgeryToken]
+    public async Task<IActionResult> DeleteCategory(int id, int eventId, CancellationToken cancellationToken = default)
+    {
+        var result = await api.DeleteAsync<bool>($"api/categories/{id}", cancellationToken);
+        TempData[result.Success ? "Success" : "Error"] = result.Success
+            ? "Category deleted."
+            : result.Error ?? "The category could not be deleted.";
+
+        return RedirectToAction(nameof(EventCategories), new { id = eventId });
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> Enrolments(int id, CancellationToken cancellationToken = default)
+    {
+        if (!await OwnsEventAsync(id, cancellationToken)) return RedirectToAction(nameof(Events));
+
+        var eventResult = await api.GetAsync<EventDto>($"api/events/{id}", cancellationToken);
+        if (!eventResult.Success || eventResult.Data is null) return NotFound();
+
+        var result = await api.GetAsync<List<EventEnrolmentDto>>($"api/events/{id}/enrolments", cancellationToken);
+        ViewBag.Event = eventResult.Data;
+        ViewBag.Error = result.Success ? null : result.Error;
+        return View(result.Data ?? []);
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> Results(int id, CancellationToken cancellationToken = default)
+    {
+        if (!await OwnsEventAsync(id, cancellationToken)) return RedirectToAction(nameof(Events));
+
+        var eventResult = await api.GetAsync<EventDto>($"api/events/{id}", cancellationToken);
+        if (!eventResult.Success || eventResult.Data is null) return NotFound();
+
+        var enrolments = await api.GetAsync<List<EventEnrolmentDto>>($"api/events/{id}/enrolments", cancellationToken);
+        if (!enrolments.Success)
+        {
+            TempData["Error"] = enrolments.Error ?? "You cannot manage this event.";
+            return RedirectToAction(nameof(Events));
+        }
+
+        var results = await api.GetAsync<List<OrganiserResultDto>>($"api/events/{id}/results", cancellationToken);
+        ViewBag.Event = eventResult.Data;
+        ViewBag.Enrolments = enrolments.Data ?? [];
+        ViewBag.Error = results.Success ? null : results.Error;
+        return View(results.Data ?? []);
+    }
+
+    [HttpPost, ValidateAntiForgeryToken]
+    public async Task<IActionResult> AddResult(
+        ResultViewModel model,
+        int eventId,
+        CancellationToken cancellationToken = default)
+    {
+        if (!ModelState.IsValid || model.EnrolmentId <= 0 || model.FinishTime <= TimeSpan.Zero)
+        {
+            TempData["Error"] = "Choose a participant and enter a finish time greater than zero.";
+            return RedirectToAction(nameof(Results), new { id = eventId });
+        }
+
+        var result = await api.PostAsync<JsonElementResponse>(
+            $"api/enrolments/{model.EnrolmentId}/results",
+            new { model.FinishTime, model.Position },
+            cancellationToken);
+
+        TempData[result.Success ? "Success" : "Error"] = result.Success
+            ? "Result recorded."
+            : result.Error ?? "The result could not be recorded.";
+
+        return RedirectToAction(nameof(Results), new { id = eventId });
+    }
+
+    private async Task<bool> OwnsEventAsync(int eventId, CancellationToken cancellationToken)
+    {
+        if (eventId <= 0) return false;
+
+        var mine = await api.GetAsync<List<OrganiserEventDto>>("api/organiser/events", cancellationToken);
+        return mine.Success && mine.Data is not null && mine.Data.Any(item => item.EventId == eventId);
     }
 }
