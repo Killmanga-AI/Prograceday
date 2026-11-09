@@ -1,22 +1,31 @@
-name: RaceDay API CI
+name: RaceDay Part 3 CI
+
 on:
   push:
+    branches: ["**"]
   pull_request:
-    branches: [main]
+    branches: [main, master, part-2-rest-api, part-3-mvc-webapp]
   workflow_dispatch:
+
 jobs:
-  build-and-test:
+  build-test:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
+      - name: Checkout source
         uses: actions/checkout@v4
-      - name: Install .NET
+      - name: Setup .NET 8
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 8.0.x
-      - name: Restore
+      - name: Restore API tests
         run: dotnet restore RaceDay.Tests/RaceDay.Tests.csproj
-      - name: Build
+      - name: Build API and tests
         run: dotnet build RaceDay.Tests/RaceDay.Tests.csproj --configuration Release --no-restore
-      - name: Test
-        run: dotnet test RaceDay.Tests/RaceDay.Tests.csproj --configuration Release --no-build --no-restore
+      - name: Run API integration tests
+        run: dotnet test RaceDay.Tests/RaceDay.Tests.csproj --configuration Release --no-build --no-restore --logger "console;verbosity=normal"
+      - name: Restore MVC
+        run: dotnet restore RaceDay.Mvc/RaceDay.Mvc.csproj
+      - name: Build MVC
+        run: dotnet build RaceDay.Mvc/RaceDay.Mvc.csproj --configuration Release --no-restore
+      - name: Build MVC Docker image
+        run: docker build -t raceday-mvc:ci .
