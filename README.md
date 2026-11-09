@@ -1,187 +1,200 @@
 # RaceDay — PROG6212 POE (Parts 1–3)
 
-RaceDay is an ASP.NET Core event management platform for running, walking and cycling events. Organisers create and manage events, categories, enrolments and results. Participants browse events, register for categories, track their enrolments and view their race results.
+RaceDay is an ASP.NET Core event-management platform for running, walking and cycling events. Organisers create events, categories and results; participants browse events, enrol and view their results.
 
-**Part 3 architecture:** the ASP.NET Core MVC application is a presentation layer that communicates with the Part 2 REST API over HTTP. The MVC application does not connect directly to SQL Server or Azure Blob Storage. Authentication, data access, ownership checks and business rules remain in the API.
+Part 3 is a **separate ASP.NET Core MVC application** that talks to the Part 2 REST API over HTTP. The MVC app never opens a SQL Server connection and never talks to Azure Blob Storage directly. Authentication, persistence, ownership rules and media validation stay in the API.
 
-## Solution structure
+**Repository:** <https://github.com/Killmanga-AI/Prograceday>  
+**Branch:** `part-3-mvc-webapp` (branched from `part-2-rest-api`)
+
+## Architecture
 
 ```text
-Prograceday/
-├── RaceDay.Api/              # ASP.NET Core 8 REST API
-│   ├── Controllers/          # Auth, events, users, categories, media
-│   ├── Data/                 # EF Core DbContext
-│   ├── Dtos/                 # API request contracts
-│   ├── Migrations/           # Database migrations
-│   ├── Models/               # EF Core entities
-│   └── Services/             # JWT and Azure Blob Storage services
-├── RaceDay.Tests/            # API integration tests
-├── RaceDay.Mvc/              # ASP.NET Core MVC frontend
-│   ├── Controllers/
-│   ├── Filters/              # Session and role protection
-│   ├── Models/
-│   ├── Services/             # Typed API client
-│   ├── Views/
-│   └── wwwroot/
-├── docs/                     # Original planning and Part 3 documentation
-├── .github/workflows/        # API tests, MVC build and Docker build
-├── Dockerfile                # MVC container
-└── docker-compose.yml
+Browser
+  │  HTTP + session cookie + antiforgery token
+  ▼
+RaceDay.Mvc  ──HTTP/JSON + bearer token──►  RaceDay.Api  ──EF Core──►  SQL Server
+  │                                             │
+  └── server-side session (JWT, user, role)      └── IBlobStorageService
+                                                     ├── Azure Blob Storage (configured)
+                                                     └── local App_Data/media (default/dev)
 ```
 
-## Main functionality
+| Project | Purpose |
+|---|---|
+| `RaceDay.Api` | ASP.NET Core 8 REST API, EF Core, JWT auth, uploads, Swagger |
+| `RaceDay.Mvc` | ASP.NET Core 8 MVC frontend, typed API client, session auth |
+| `RaceDay.Tests` | API integration tests (WebApplicationFactory) |
+| `RaceDay.Mvc.Tests` | MVC integration tests against an in-process stub API |
 
-### Shared
-- Participant and organiser registration and login.
-- JWT-based API authentication.
-- Server-side MVC session stores the token, user ID, name, email and role.
-- Role-specific navigation and protected controller actions.
-- Logout clears the session.
+The MVC project has no `ProjectReference` to the API and no EF Core or Azure packages. `RaceDayApiClient` is the only integration point.
+
+## Features
 
 ### Participant
-- Browse and filter upcoming events.
-- View event details, categories, distance, date and location.
-- Enrol in an available category.
-- View and cancel personal enrolments.
-- View recorded results, event date, category, finish time and position out of total finishers.
-- Update profile details and upload a profile picture.
+- Register and sign in through the API; logout clears the server-side session.
+- Browse and filter public events by type, date and search text.
+- View event details, categories, distance, capacity and remaining places.
+- Enrol in an open category and cancel an enrolment that has no result.
+- See enrolments and results (event date, category, finish time, position out of finishers).
+- Update profile details and upload a JPEG/PNG/WebP profile picture.
 
 ### Organiser
-- Dashboard with event, enrolment and result totals.
-- Create, update and delete owned events.
-- Upload event banners.
-- Add, update and delete categories.
-- View event enrolments.
-- Capture race results.
+- Dashboard with event, enrolment and result totals plus recent activity.
+- Create, edit and delete owned events, including a banner upload.
+- Add, edit and delete categories with capacity and distance.
+- View enrolments per event and capture results.
+- Uploads and event changes are rejected by the API when the organiser does not own the event.
 
-### API and storage
-- SQL Server persistence through EF Core.
-- JWT authentication and role-based authorisation.
-- Organiser ownership checks on event, category, enrolment and result operations.
-- Azure Blob Storage upload endpoints for event banners and profile pictures.
-- Image type allow-list (JPEG, PNG, WebP) and 5 MB maximum upload size.
-- API validates the user/event relationship before saving uploaded media.
+### Cross-cutting
+- MVC session stores the JWT, user ID, name, email and role; idle sessions expire.
+- Role-aware navigation plus server-side `SessionAuthorize` checks; the API re-checks every call.
+- Antiforgery validation on every MVC POST.
+- Friendly 403/404/500 status pages; security headers and no-store caching for authenticated pages.
+- Upload validation on both sides: allowed image types, signature check and a 5 MB limit.
+- Responsive, keyboard-accessible Bootstrap UI.
+
+## Technology
+
+- .NET 8, ASP.NET Core MVC and minimal hosting
+- Entity Framework Core 8 with SQL Server (InMemory for tests)
+- JWT bearer authentication and role authorisation
+- Swashbuckle / OpenAPI
+- Azure.Storage.Blobs, with a local filesystem provider for development
+- xUnit + `WebApplicationFactory`
+- Docker multi-stage builds and Docker Compose
+- GitHub Actions
 
 ## Prerequisites
 
 - .NET 8 SDK
-- SQL Server (LocalDB is suitable for Windows development)
-- Visual Studio 2022 or another .NET 8 compatible IDE
-- Azure Storage account for live image uploads (optional while developing the non-upload features)
-- Docker Desktop for container execution
+- SQL Server (LocalDB is fine on Windows) for local runs
+- Docker Desktop for the container stack (optional)
+- An Azure Storage account only if you want to exercise the Azure media provider
 
-## 1. Configure the API
+## Run locally
 
-Create `RaceDay.Api/appsettings.Development.json` using `RaceDay.Api/appsettings.Development.json.example` as a template. Configure your own SQL Server connection string.
+### 1. Configure the API
 
-Set the JWT signing key using user secrets. Do not commit secrets:
+Create `RaceDay.Api/appsettings.Development.json` from `appsettings.Development.json.example`, then store secrets with user secrets (never commit them):
 
 ```powershell
 dotnet user-secrets init --project RaceDay.Api/RaceDay.Api.csproj
-dotnet user-secrets set "Jwt:Key" "replace-with-a-random-secret-at-least-32-characters" --project RaceDay.Api/RaceDay.Api.csproj
+dotnet user-secrets set "Jwt:Key" "<random secret of at least 32 characters>" --project RaceDay.Api/RaceDay.Api.csproj
 ```
 
-For Azure Blob Storage, configure the connection string and container name as user secrets:
+The default media provider is `Local`, which writes to `RaceDay.Api/App_Data/media` and serves it from `/media`. Uploads work without Azure credentials. To use Azure instead:
 
 ```powershell
-dotnet user-secrets set "AzureBlobStorage:ConnectionString" "YOUR_AZURE_STORAGE_CONNECTION_STRING" --project RaceDay.Api/RaceDay.Api.csproj
+dotnet user-secrets set "Media:Provider" "Azure" --project RaceDay.Api/RaceDay.Api.csproj
+dotnet user-secrets set "AzureBlobStorage:ConnectionString" "<your connection string>" --project RaceDay.Api/RaceDay.Api.csproj
 dotnet user-secrets set "AzureBlobStorage:ContainerName" "raceday-media" --project RaceDay.Api/RaceDay.Api.csproj
 ```
 
-The image service creates the container if it does not exist and configures blob-level public read access so event banners and profile pictures can be displayed by browsers. The storage account must permit anonymous blob access. If your organisation prohibits public blob access, replace this with short-lived SAS URL generation before deployment. Never put the connection string in the MVC application.
+The Azure provider creates the container with blob-level public read access so browsers can display images. For a private deployment, replace that with short-lived SAS URLs.
 
-## 2. Apply the database migration
-
-Back up any existing database before applying migrations. The new Part 3 migration adds nullable `BannerImageUrl` to `Events` and `ProfilePictureUrl` to `Users`.
-
-Install EF tooling if required:
+### 2. Apply migrations
 
 ```powershell
-dotnet tool install --global dotnet-ef --version 8.0.11
-```
-
-Apply all migrations:
-
-```powershell
+dotnet tool restore
 dotnet ef database update --project RaceDay.Api/RaceDay.Api.csproj --startup-project RaceDay.Api/RaceDay.Api.csproj
 ```
 
-Do not run `docs/database_schema.sql` against an existing database: that planning script drops and recreates the original tables. If your database was created manually from that script rather than EF migrations, back it up and baseline it deliberately before applying migrations.
+`Database:AutoMigrate` can apply migrations at startup; it is enabled in Compose and off by default locally.
 
-## 3. Run the API
-
-The included launch profile uses HTTP port `5171` and HTTPS port `7171`.
+### 3. Start both applications
 
 ```powershell
+# Terminal 1 — API on http://localhost:5171 and https://localhost:7171
 dotnet run --project RaceDay.Api/RaceDay.Api.csproj
-```
 
-API Swagger: `https://localhost:7171/swagger` (or the HTTP equivalent).
-
-Health check: `http://localhost:5171/health`.
-
-## 4. Run the MVC application
-
-The MVC app defaults to `http://localhost:5171/` for the API. This matches the API launch profile above.
-
-In a second terminal:
-
-```powershell
+# Terminal 2 — MVC (uses http://localhost:5171/ by default)
 dotnet run --project RaceDay.Mvc/RaceDay.Mvc.csproj
 ```
 
-Open the MVC URL printed by the .NET host (normally `https://localhost:7xxx` or `http://localhost:5xxx`).
+Open the MVC URL printed by the host. Swagger is at `https://localhost:7171/swagger`; the API health endpoint is `http://localhost:5171/health`.
 
-If the API runs at a different address, set the MVC configuration value:
+If the API runs elsewhere:
 
 ```powershell
 $env:RaceDayApi__BaseUrl = "https://localhost:7171/"
 dotnet run --project RaceDay.Mvc/RaceDay.Mvc.csproj
 ```
 
-When using HTTPS locally, ensure the development certificate is trusted. If the MVC container cannot validate a local self-signed API certificate, use a trusted development certificate or configure a local HTTP API endpoint for development only.
+## Configuration
 
-## 5. Run tests and builds
+### API
 
-Run API integration tests:
+| Key | Default | Notes |
+|---|---|---|
+| `ConnectionStrings:RaceDay` | LocalDB | SQL Server connection string |
+| `Jwt:Key` | — | Required, 32+ characters; use user secrets or env vars |
+| `Jwt:Issuer` / `Jwt:Audience` | `RaceDay` / `RaceDayClients` | Token validation |
+| `Media:Provider` | `Local` | `Local` or `Azure` |
+| `Media:LocalPath` | `App_Data/media` | Local provider root |
+| `Media:PublicBaseUrl` | — | Absolute base for returned image URLs |
+| `AzureBlobStorage:ConnectionString` | — | Required for the Azure provider |
+| `Database:AutoMigrate` | `false` | Apply migrations at startup |
+| `Https:Redirect` | `true` | Disable behind an HTTP-only proxy |
+| `Swagger:Enabled` | `false` | Also enabled in Development/Testing |
 
-```powershell
-dotnet test RaceDay.Tests/RaceDay.Tests.csproj --configuration Release
-```
+### MVC
 
-Build the MVC project:
+| Key | Default | Notes |
+|---|---|---|
+| `RaceDayApi:BaseUrl` | `http://localhost:5171/` | API root URL |
+| `RaceDayApi:TimeoutSeconds` | `30` | HTTP client timeout |
+| `Session:IdleMinutes` | `30` | Session idle timeout |
+| `Session:SecureCookies` | `true` outside Development | Set `false` only for plain-HTTP local/Compose use |
+| `Https:Redirect` | `true` | Disable for plain-HTTP containers |
 
-```powershell
-dotnet build RaceDay.Mvc/RaceDay.Mvc.csproj --configuration Release
-```
+Environment-variable form uses double underscores, e.g. `RaceDayApi__BaseUrl`.
 
-The GitHub Actions workflow restores, builds and tests the API, builds the MVC application, and builds the MVC Docker image. The tests use an isolated EF Core InMemory database; they do not replace a SQL Server migration check or an Azure Storage integration test.
+## Tests
 
-## 6. Run the MVC Docker container
+Both suites were run on 2026-11-09 against the final code:
 
-Build:
+| Command | Result |
+|---|---|
+| `dotnet build RaceDay.sln -c Release` | Build succeeded, 0 warnings, 0 errors |
+| `dotnet test RaceDay.Tests/RaceDay.Tests.csproj -c Release` | **29 passed**, 0 failed |
+| `dotnet test RaceDay.Mvc.Tests/RaceDay.Mvc.Tests.csproj -c Release` | **40 passed**, 0 failed |
+
+What the tests cover:
+
+- **API:** registration/login validation, JWT roles, public event and category browsing, organiser ownership scoping, enrolment capacity, result capture, participant results, upload type/size validation, Swagger completeness, health endpoint, local media storage.
+- **MVC:** anonymous and authenticated routing, role separation (participant vs organiser), session creation/expiry/logout, antiforgery rejection, upload validation before the API call, organiser CRUD flows, participant browse/enrol/cancel/results, profile updates, friendly error pages and cache headers.
+
+The MVC tests start a real Kestrel **stub API** on a loopback port and point the MVC app at it. Real HTTP, JSON serialization, multipart uploads and cookies are exercised; API business logic is covered by the API suite. Tests do not prove Azure Blob Storage or a live SQL Server migration — those require credentials/infrastructure (CI performs the SQL migration check).
+
+See [`docs/TEST_RESULTS.md`](docs/TEST_RESULTS.md) for the exact commands and output summary.
+
+## Docker Compose
+
+The stack is SQL Server 2022 + API + MVC on an internal network with named volumes and health checks.
 
 ```bash
-docker build -t raceday-mvc .
-```
-
-Run the container and point it to an API reachable from the container:
-
-```bash
-docker run --rm -p 8080:8080 \
-  -e RaceDayApi__BaseUrl="http://host.docker.internal:5171/" \
-  raceday-mvc
-```
-
-Then open `http://localhost:8080`.
-
-Alternatively:
-
-```bash
+cp .env.example .env      # then edit both secrets
 docker compose up --build
 ```
 
-Set `RACEDAY_API_URL` before starting Compose if the API is hosted somewhere other than the host's port 5171. The Docker image contains the MVC application only; the API and SQL Server remain separately hosted services.
+- MVC: <http://localhost:8080>
+- API/Swagger: <http://localhost:8081/swagger>
+- SQL Server is not published to the host by default.
+
+The API waits for SQL Server's health check and applies migrations (with retries). Uploaded images persist in the `raceday-media` volume; database files persist in `mssql-data`. Compose serves plain HTTP for local use, so `Session__SecureCookies` is explicitly disabled; put TLS in front before exposing it publicly.
+
+Useful commands:
+
+```bash
+docker compose config          # validate the model and rendered environment
+docker compose ps
+docker compose logs -f raceday-api
+docker compose down            # keep volumes
+docker compose down -v         # also delete database and media volumes
+```
+
+**Verification status:** the Compose model is validated with `docker compose config`. The Docker daemon was not running on the authoring machine, so the images were **not** built or run there. The CI workflow builds both images on every push.
 
 ## API endpoints
 
@@ -204,82 +217,76 @@ Set `RACEDAY_API_URL` before starting Compose if the API is hosted somewhere oth
 | DELETE | `/api/enrolments/{id}` | Enrolment owner |
 | POST | `/api/enrolments/{id}/results` | Owning organiser |
 | GET | `/api/users/me/results` | Participant |
-| GET / PUT | `/api/users/me` | Authenticated user |
+| GET / PUT | `/api/users/me` | Authenticated |
 | POST | `/api/events/{id}/banner` | Owning organiser |
-| POST | `/api/users/me/profile-picture` | Authenticated user |
+| POST | `/api/users/me/profile-picture` | Authenticated |
+| GET | `/health` | Public |
 
-## Security and design notes
+## Security notes
 
-- MVC stores the JWT in server-side session, not browser local storage.
-- MVC cookies are HttpOnly and use SameSite=Lax. HTTPS should be used in production.
-- Every MVC POST form uses anti-forgery validation.
-- The API is authoritative for roles and resource ownership; hiding a navigation link is not treated as access control.
-- Image uploads accept JPEG, PNG and WebP, with a 5 MB limit.
-- The Azure connection string is configured only in the API.
-- The current API permits public registration as either role to match the existing Part 2 behaviour. A real production system should add organiser approval or invitation.
-- The public event/category browse endpoints expose event information without requiring login; enrolment still requires a participant token.
-- The MVC application displays API failures as user-facing messages rather than silently treating failed requests as successful.
+- The JWT is kept in server-side session, never in browser storage.
+- Cookies are HttpOnly and SameSite=Lax; enable secure cookies behind TLS.
+- Every MVC POST validates an antiforgery token.
+- The API is authoritative for roles and ownership; hiding a link is not access control.
+- Uploads are limited to JPEG, PNG and WebP, checked by declared type and file signature, with a 5 MB cap.
+- Secrets are read from user secrets/environment variables; no credentials are committed.
+- Public registration currently allows either role, matching Part 2. A production system should add organiser approval.
+- Security headers (`X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, a restrictive CSP) are applied globally.
 
-## Part 3 manual assessment test plan
+## CI
 
-1. Register and log in as an organiser.
-2. Confirm organiser-only navigation and that participant-only pages reject the organiser role.
-3. Create an event with a name, description, date, location, route, distance and type.
-4. Upload a JPG/PNG/WebP event banner and verify it displays.
-5. Add, edit and delete categories.
-6. Register and log in as a participant in another browser/private session.
-7. Browse and filter events, open event details and inspect categories.
-8. Enrol in a category; verify the enrolment appears in My Events.
-9. Cancel an enrolment without a result; verify the status/list updates.
-10. As organiser, inspect event enrolments and capture a participant result.
-11. As participant, verify My Results shows the event date, category, finish time and position/total finishers.
-12. Update profile details and upload a profile picture.
-13. Attempt direct URL access to the wrong role's pages and verify access is denied.
-14. Log out and verify protected pages redirect to login.
-15. Run the database migration, API tests, MVC build and Docker container.
+`.github/workflows/dotnet.yml` runs three jobs on every push and pull request:
 
-## GitHub branch setup
+1. **Build and test** — restore and build the whole solution, run both xUnit suites, upload TRX results.
+2. **SQL Server migration check** — start SQL Server 2022, wait for readiness, `dotnet ef database update`, assert the schema and migration history.
+3. **Docker image builds** — build the API and MVC images.
 
-Continue from the Part 2 branch and create a separate Part 3 branch before committing these changes:
+## Repository layout
 
-```bash
-git switch part-2-rest-api
-git switch -c part-3-mvc-webapp
+```text
+Prograceday/
+├── RaceDay.Api/              # REST API
+│   ├── Controllers/          # Auth, events, categories, enrolments, users, media
+│   ├── Data/                 # EF Core context
+│   ├── Migrations/
+│   ├── Models/ Dtos/         # Entities and request contracts
+│   ├── Services/             # JWT, Azure and local blob storage
+│   └── Dockerfile
+├── RaceDay.Mvc/              # MVC frontend
+│   ├── Controllers/ Filters/ Models/ Services/ Views/ wwwroot/
+│   └── Dockerfile
+├── RaceDay.Tests/            # API integration tests
+├── RaceDay.Mvc.Tests/        # MVC integration tests + stub API
+├── docs/                     # Rubric mapping, test results, demo script
+├── .github/workflows/        # CI
+├── docker-compose.yml
+└── RaceDay.sln
 ```
 
-If you are applying this ZIP to an existing clone, copy the project files into that checked-out branch rather than replacing the repository's `.git` directory. The ZIP itself does not contain Git history or create/push a remote branch.
+## Documentation
 
-## GitHub commit guidance
+- [`docs/PART3_IMPLEMENTATION.md`](docs/PART3_IMPLEMENTATION.md) — design decisions and request flows
+- [`docs/PART3_RUBRIC_MAPPING.md`](docs/PART3_RUBRIC_MAPPING.md) — requirement-to-code checklist
+- [`docs/TEST_RESULTS.md`](docs/TEST_RESULTS.md) — measured build/test results
+- [`docs/SUBMISSION_CHECKLIST.md`](docs/SUBMISSION_CHECKLIST.md) — pre-submission steps
+- [`docs/DEMO_SCRIPT.md`](docs/DEMO_SCRIPT.md) — video walkthrough plan
 
-Use meaningful commits to show the development process. Suggested sequence:
+## Git history
 
-1. Add MVC project and base configuration.
-2. Add typed API client.
-3. Add session authentication.
-4. Add role-aware navigation and route protection.
-5. Add participant event browsing.
-6. Add event details and category display.
-7. Add participant enrolment workflow.
-8. Add My Events and cancellation.
-9. Add My Results.
-10. Add organiser dashboard.
-11. Add organiser event CRUD.
-12. Add category management.
-13. Add organiser enrolment management.
-14. Add result capture.
-15. Add profile editing.
-16. Add Azure Blob Storage service.
-17. Add event banner upload.
-18. Add profile picture upload.
-19. Add MVC Docker configuration.
-20. Extend GitHub Actions and documentation.
-
-These are suggested commit boundaries; create commits as you implement/review the work rather than manufacturing history after the fact.
+Work continues on `part-3-mvc-webapp`, branched from `part-2-rest-api`. The branch contains the original Part 3 import plus incremental commits for the typed API client, session authentication, upload validation, status pages, local media provider, startup health/migrations, tests, Docker, CI and documentation. Use `git log --oneline --graph` to review it.
 
 ## Demonstration video
 
-Record an unlisted video showing the two roles and the manual assessment test plan above. Add the final unlisted YouTube URL here before submission. Do not submit the placeholder as a real video link.
+_Add the unlisted YouTube URL here before submitting. See `docs/DEMO_SCRIPT.md` for the planned walkthrough._ This placeholder must not be submitted as a real link.
+
+## Known limitations
+
+- The Docker stack was not executed on the authoring machine (daemon unavailable); CI builds the images and the Compose model validates.
+- Azure Blob Storage requires the student's own storage account and was not exercised with live credentials; the local provider covers the same contract in development/tests.
+- Public registration allows either role; organiser approval is future work.
+- No password-reset or email-verification flow.
+- The demo video still needs to be recorded and linked.
 
 ## AI use disclosure
 
-Update this statement to accurately reflect your own work and institutional requirements. ChatGPT was used to assist with code scaffolding, API/MVC integration planning, documentation and review. The submitted implementation should be personally reviewed, tested, understood and explained by the student. Do not claim code was independently authored if AI-generated assistance was used.
+Update this statement to match your institution's rules and your own contribution. AI assistance was used for scaffolding, integration planning, documentation and review. Review, run, understand and be able to explain all submitted code. Do not claim independently authored work if AI assistance was used.
