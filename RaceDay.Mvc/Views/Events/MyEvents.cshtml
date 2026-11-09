@@ -1,0 +1,8 @@
+@model List<JsonElement>
+@{ViewData["Title"]="My events";}
+<h1>My events</h1><p class="text-secondary">Your registrations and their current status.</p>
+@if(ViewBag.Error is string err){<div class="alert alert-warning">@err</div>}
+<div class="card p-3"><div class="table-responsive"><table class="table"><thead><tr><th>Event</th><th>Date</th><th>Location</th><th>Category</th><th>Enrolled</th><th>Status</th><th></th></tr></thead><tbody>
+@foreach(var e in Model){<tr><td>@e.GetProperty("event").GetString()</td><td>@e.GetProperty("eventDate").GetDateTime().ToString("dd MMM yyyy")</td><td>@e.GetProperty("eventLocation").GetString()</td><td>@e.GetProperty("category").GetString()</td><td>@e.GetProperty("enrolmentDate").GetDateTime().ToString("dd MMM yyyy")</td><td><span class="badge text-bg-success">@e.GetProperty("status").GetString()</span></td><td><form asp-action="Cancel" method="post"><input type="hidden" name="id" value="@e.GetProperty("enrolmentId").GetInt32()"/><button class="btn btn-sm btn-outline-danger">Cancel</button></form></td></tr>}
+</tbody></table></div></div>
+@if(Model.Count==0){<div class="alert alert-info mt-3">You have not enrolled in any events yet. <a asp-action="Browse">Browse events</a>.</div>}

@@ -1,0 +1,13 @@
+@model JsonElement
+@{ViewData["Title"]="Organiser dashboard";}
+<h1>Organiser dashboard</h1><p class="text-secondary">An overview of your RaceDay activity.</p>
+@if(ViewBag.Error is string err){<div class="alert alert-warning">@err</div>}
+@if(Model.ValueKind==JsonValueKind.Object){
+<div class="row g-3 mb-4">
+@foreach(var item in new[]{("Events","totalEvents"),("Upcoming","upcomingEvents"),("Enrolments","totalEnrolments"),("Results","resultsRecorded")}){<div class="col-6 col-lg-3"><div class="card p-3"><div class="text-secondary">@item.Item1</div><div class="metric">@Model.GetProperty(item.Item2).GetInt32()</div></div></div>}
+</div>
+<div class="d-flex justify-content-between align-items-center mb-2"><h3>Upcoming events</h3><a class="btn btn-primary" asp-action="CreateEvent">Create event</a></div>
+<div class="card p-3 table-responsive"><table class="table"><thead><tr><th>Event</th><th>Date</th><th>Location</th><th>Enrolments</th><th></th></tr></thead><tbody>@foreach(var e in Model.GetProperty("upcomingEventList").EnumerateArray()){<tr><td>@e.GetProperty("eventName").GetString()</td><td>@e.GetProperty("eventDate").GetDateTime().ToString("dd MMM yyyy")</td><td>@e.GetProperty("location").GetString()</td><td>@e.GetProperty("enrolments").GetInt32()</td><td><a asp-action="EventCategories" asp-route-id="@e.GetProperty("eventId").GetInt32()">Manage</a></td></tr>}</tbody></table></div>
+<h3 class="mt-4">Recent enrolments</h3>
+<div class="card p-3 table-responsive"><table class="table"><thead><tr><th>Participant</th><th>Event</th><th>Category</th><th>Enrolled</th><th>Status</th></tr></thead><tbody>@foreach(var e in Model.GetProperty("recentEnrolments").EnumerateArray()){<tr><td>@e.GetProperty("participant").GetString()</td><td>@e.GetProperty("event").GetString()</td><td>@e.GetProperty("category").GetString()</td><td>@e.GetProperty("enrolmentDate").GetDateTime().ToString("dd MMM yyyy")</td><td>@e.GetProperty("status").GetString()</td></tr>}</tbody></table></div>
+}else{<div class="alert alert-info">No dashboard data is available. Check the API connection.</div>}
