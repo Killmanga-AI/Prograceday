@@ -2,46 +2,69 @@
 
 ## Separation of concerns
 
-`RaceDay.Mvc` is an ASP.NET Core MVC presentation client. It sends HTTP requests to `RaceDay.Api` through `RaceDayApiClient`. It does not reference the EF Core context or SQL Server provider and has no Azure Storage dependency.
+`RaceDay.Mvc` is an ASP.NET Core MVC presentation client. It sends HTTP requests to `RaceDay.Api` through `RaceDayApiClient` and has no project reference to the API, no EF Core packages and no Azure Storage dependency.
 
-The API remains the source of truth for:
+The API remains authoritative for:
+
 - authentication and JWT issuance;
-- role and organiser ownership checks;
+- role and organiser-ownership checks;
 - event, category, enrolment and result rules;
 - participant-specific data;
-- database persistence;
-- image validation and Azure Blob Storage.
+- database persistence and migrations;
+- image validation and media storage.
 
-## Session model
+## Request and session flow
 
-After a successful API login, MVC stores the token, user ID, full name, email and role in server-side ASP.NET Core session. API calls attach the bearer token. The MVC `SessionAuthorizeAttribute` filter protects controller actions and checks the role before executing them. The API independently enforces the same role/ownership requirements.
+1. The visitor submits the MVC login form with an antiforgery token.
+2. `AccountController` calls `POST /api/auth/login` through the typed client.
+3. On success the MVC app stores the JWT, user ID, name, email and role in server-side session.
+4. `RaceDayApiClient` attaches the bearer token to every subsequent API call.
+5. `SessionAuthorize` filters check authentication and role before a controller action runs.
+6. `SessionExpiryFilter` handles an API `401` by clearing the session and redirecting to login with a message.
+7. Logout clears the session; protected pages redirect to login again.
 
-The session cookie is HttpOnly and SameSite=Lax. Use HTTPS in a deployed environment.
+Session cookies are HttpOnly and SameSite=Lax. Secure cookies are on by default outside Development; the Testing environment and local Compose override this because they run over plain HTTP. The API independently enforces the same role and ownership rules, so hiding navigation is never the only control.
 
-## API additions
+## Typed API contracts
 
-- Public `GET /api/events` and `GET /api/events/{id}` support event discovery.
-- Public `GET /api/events/{id}/categories` allows visitors to inspect event categories before signing in.
-- `GET /api/organiser/dashboard` returns organiser-scoped summary values and recent/upcoming event data.
-- `GET /api/organiser/events` returns the authenticated organiser's event list.
-- Participant enrolment responses include event ID, event date, location, type, banner URL and category distance.
-- Participant result responses include event ID/date/location, category distance and total recorded finishers in the same category.
-- `POST /api/events/{id}/banner` and `POST /api/users/me/profile-picture` accept multipart form data and store media through the API's Azure Blob service.
+The MVC client uses records in `Models/ApiContracts.cs` (`ApiEvent`, `ApiCategory`, `ApiEnrolment`, `ApiResult`, `ApiUser`, dashboard types) instead of untyped `JsonElement` access. Malformed or unexpected API payloads surface as handled errors rather than null-reference exceptions. View models in `Models/ViewModels.cs` carry validation attributes for forms.
 
-## Image upload policy
+## API additions in Part 3
 
-Only JPEG, PNG and WebP are accepted. The API checks declared content type, verifies file signature bytes, and enforces a 5 MB limit. The organiser must own the event before uploading its banner. The authenticated user can upload only their own profile picture.
+- Public `GET /api/events`, `GET /api/events/{id}` and `GET /api/events/{id}/categories` for discovery.
+- `GET /api/organiser/dashboard` for organiser-scoped totals and recent/upcoming events.
+- `GET /api/organiser/events` for the authenticated organiser's events.
+- Enrolment and result responses include event date, location, type, banner URL, category distance and total finishers.
+- `POST /api/events/{id}/banner` and `POST /api/users/me/profile-picture` accept multipart uploads.
+- `GET /health` reports API, database and media-provider readiness.
 
-The sample implementation creates a blob container with blob-level public read access so images can be displayed by the MVC browser. The Azure Storage account must permit public blob access. For deployments requiring private media, use short-lived SAS URLs and update the service before production.
+## Media storage
 
-## Database migration
+`IBlobStorageService` has two implementations:
 
-`20261109190000_AddPart3ImageUrls` adds nullable URL columns:
-- `Events.BannerImageUrl`
-- `Users.ProfilePictureUrl`
+- `AzureBlobStorageService` — used when `Media:Provider=Azure`; creates the container with blob-level public read access.
+- `LocalBlobStorageService` — the default; writes to `Media:LocalPath` (default `App_Data/media`), serves files from `/media`, and returns an absolute URL using `Media:PublicBaseUrl` or the current request.
 
-Existing records remain valid because both columns are nullable. The migration is reversible.
+The provider is resolved per request, so environment variables, user secrets and test configuration all apply. Compose sets `Media:LocalPath=/app/App_Data/media`, mounts a named volume and sets `Media:PublicBaseUrl` to the host-published API origin so browsers can load images.
+
+Upload rules are enforced in the API controller and service: JPEG/PNG/WebP only, signature bytes checked, 5 MB maximum, and ownership verified before saving.
+
+## Database
+
+`20261109190000_AddPart3ImageUrls` adds nullable `Events.BannerImageUrl` and `Users.ProfilePictureUrl`. Existing rows stay valid and the migration is reversible.
+
+The API seeds the `Organiser` and `Participant` roles at startup. `Database:AutoMigrate` enables migration with bounded retries (useful in Compose where SQL Server starts slowly); it is disabled by default for local runs so migrations stay explicit.
+
+## Errors and resilience
+
+- MVC uses status-code re-execution (`/Home/StatusPage`) for 403/404/500 and a friendly unavailable page when the API cannot be reached.
+- The no-cache middleware writes headers **before** the response starts, avoiding "headers already sent" failures.
+- The API client maps timeouts, connection failures and non-success responses to user-facing messages.
+- Upload validation runs in MVC before the API call, and again in the API.
 
 ## Test scope
 
-API integration tests cover public event/category browsing, organiser dashboard scoping, participant result metadata and media validation/configuration failures. The test host uses EF Core InMemory. A separate SQL Server migration and Azure Blob Storage verification is still required before submission.
+- `RaceDay.Tests` (29 tests): API integration tests with EF Core InMemory and a temporary local media root.
+- `RaceDay.Mvc.Tests` (40 tests): MVC integration tests against a real Kestrel stub API on a loopback port, covering cookies, antiforgery, redirects, multipart uploads and rendered HTML.
+
+SQL Server migrations are verified in CI against a real SQL Server 2022 container. Azure Blob Storage is not covered by automated tests and requires the student's own storage account.

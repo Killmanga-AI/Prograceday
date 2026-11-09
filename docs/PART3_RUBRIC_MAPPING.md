@@ -1,46 +1,56 @@
-# Part 3 rubric mapping checklist
+# Part 3 rubric mapping
 
-This checklist maps the requested Part 3 capabilities to the implementation. Tick each item only after running the application and confirming the behaviour in your own environment.
+Status reflects the submitted branch `part-3-mvc-webapp`:
 
-| Assessment area | Implementation location | Verify |
+- **Done** — implemented and covered by automated tests or verified locally.
+- **Manual** — implemented but requires the assessor/student to run it with their own environment.
+- **Open** — still needs action before submission.
+
+| Assessment area | Implementation | Status |
 |---|---|---|
-| ASP.NET Core MVC frontend | `RaceDay.Mvc` | [ ] |
-| MVC communicates with Part 2 API over HTTP | `Services/RaceDayApiClient.cs` | [ ] |
-| Registration and login | `AccountController`, `Views/Account` | [ ] |
-| User ID, role and JWT retained in session | `AccountController`, `Program.cs` | [ ] |
-| Role-specific navigation | `Views/Shared/_Layout.cshtml` | [ ] |
-| Protected pages and logout | `SessionAuthorizeFilter`, `AccountController` | [ ] |
-| Organiser dashboard | `OrganiserController.Dashboard`, API dashboard endpoint | [ ] |
-| Organiser event create/read/update/delete | `OrganiserController`, `EventsController` API | [ ] |
-| Required event fields | `EventViewModel`, `EventRequest` | [ ] |
-| Event banner upload | `MediaController`, Azure Blob service | [ ] |
-| Category create/update/delete | `OrganiserController`, `CategoriesController` API | [ ] |
-| View event enrolments | `OrganiserController.Enrolments` | [ ] |
-| Capture results | `OrganiserController.AddResult` | [ ] |
-| Browse/filter events | `EventsController.Browse` | [ ] |
-| Event detail and categories | `EventsController.Details` | [ ] |
-| Participant enrolment | `EventsController.Enrol` | [ ] |
-| My Events and status | `EventsController.MyEvents` | [ ] |
-| My Results with date and position/finishers | `EventsController.MyResults` | [ ] |
-| Profile update | `ProfileController` | [ ] |
-| Profile picture upload | `MediaController` | [ ] |
-| Azure Blob Storage integration | `RaceDay.Api/Services/BlobStorageService.cs` | [ ] |
-| Docker MVC container | root `Dockerfile` | [ ] |
-| MVC CI build and API tests | `.github/workflows/dotnet.yml` | [ ] |
-| Responsive sporting interface | `RaceDay.Mvc/Views`, `wwwroot/css/site.css` | [ ] |
-| Setup and run documentation | root `README.md` | [ ] |
-| Unlisted video demonstration | Add URL to README | [ ] |
+| ASP.NET Core MVC frontend | `RaceDay.Mvc` | Done |
+| MVC consumes the Part 2 API over HTTP only | `Services/RaceDayApiClient.cs`; no API/EF/Azure references in the MVC project | Done |
+| Registration and login | `AccountController`, `Views/Account` | Done |
+| User ID, role and JWT kept in session | `AccountController`, `Services/SessionAuth.cs`, `Program.cs` | Done |
+| Role-specific navigation | `Views/Shared/_Layout.cshtml` | Done |
+| Protected pages, expiry and logout | `Filters/SessionAuthorizeFilter.cs`, `Filters/SessionExpiryFilter.cs` | Done |
+| Organiser dashboard | `OrganiserController.Dashboard`, `/api/organiser/dashboard` | Done |
+| Event create/read/update/delete | `OrganiserController`, API `EventsController` | Done |
+| Required event fields and validation | `EventViewModel`, `EventRequest` | Done |
+| Event banner upload | `OrganiserController`, API `MediaController` | Done |
+| Category create/update/delete | `OrganiserController`, API `CategoriesController` | Done |
+| View event enrolments | `OrganiserController.Enrolments` | Done |
+| Capture results | `OrganiserController.AddResult` | Done |
+| Browse and filter events | `EventsController.Browse` | Done |
+| Event details and categories | `EventsController.Details` | Done |
+| Participant enrolment and cancellation | `EventsController.Enrol/CancelEnrolment` | Done |
+| My Events with status | `EventsController.MyEvents` | Done |
+| My Results with date, time and position/finishers | `EventsController.MyResults` | Done |
+| Profile update | `ProfileController` | Done |
+| Profile picture upload | `ProfileController`, API media endpoint | Done |
+| Azure Blob Storage integration | `RaceDay.Api/Services/AzureBlobStorageService.cs`; selected with `Media:Provider=Azure` | Manual — needs Azure credentials |
+| Local media fallback for development/tests | `Services/LocalBlobStorageService.cs` | Done |
+| MVC and API Dockerfiles | `RaceDay.Mvc/Dockerfile`, `RaceDay.Api/Dockerfile` | Done (built in CI) |
+| Compose stack with SQL Server, networking, volumes, health checks | `docker-compose.yml`, `.env.example` | Done (`docker compose config` validated; not run locally) |
+| Database migration | `20261109190000_AddPart3ImageUrls`, `dotnet ef` | Done (CI SQL Server job) |
+| Automated API tests | `RaceDay.Tests` — 29 passing | Done |
+| Automated MVC tests | `RaceDay.Mvc.Tests` — 40 passing | Done |
+| GitHub Actions CI | `.github/workflows/dotnet.yml` | Done (runs on push) |
+| Responsive sporting interface | Views, `wwwroot/css/site.css` | Done |
+| Security controls | Antiforgery, session expiry, role filters, upload validation, headers | Done |
+| Setup and run documentation | `README.md`, `docs/` | Done |
+| At least 20 meaningful commits | `part-3-mvc-webapp` history | Done |
+| Unlisted demonstration video | README placeholder | **Open** |
 
-## Before submission
+## How to verify manually
 
-- [ ] Build the entire solution in Visual Studio or with `dotnet build RaceDay.sln`.
-- [ ] Apply EF Core migrations to a backed-up SQL Server database.
-- [ ] Run `dotnet test RaceDay.Tests/RaceDay.Tests.csproj`.
-- [ ] Verify Azure Blob uploads using your own storage account.
-- [ ] Test both roles in separate browser sessions.
-- [ ] Test access denial by manually entering the other role's URLs.
-- [ ] Build and run the Docker image.
-- [ ] Push the work to your Part 3 GitHub branch.
-- [ ] Make at least 20 meaningful commits across the implementation.
-- [ ] Record and link the unlisted video.
-- [ ] Ensure you can explain the API/MVC separation, session/JWT flow, EF migration and Azure upload path.
+1. Start SQL Server, apply migrations and run the API and MVC app (`README.md`).
+2. Register an organiser, create an event with a banner, and add categories.
+3. In a private window, register a participant, enrol, and view My Events.
+4. As the organiser, view enrolments and capture a result.
+5. As the participant, confirm My Results shows date, category, finish time and position.
+6. Try the other role's URLs directly and confirm access is denied by the MVC filter and by the API.
+7. Upload a PDF or a file over 5 MB and confirm it is rejected before reaching the API.
+8. Stop the API and confirm the friendly "service unavailable" page appears.
+9. Run `docker compose config`, then `docker compose up --build` on a machine with Docker running.
+10. Record the walkthrough in `docs/DEMO_SCRIPT.md` and add the unlisted YouTube link to the README.
