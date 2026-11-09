@@ -1,17 +1,13 @@
 {
   "ConnectionStrings": {
-    "RaceDay": "Server=localhost;Database=RaceDayDB;Trusted_Connection=True;TrustServerCertificate=True;"
+    "RaceDay": "Server=(localdb)\\\\MSSQLLocalDB;Database=RaceDayDB;Trusted_Connection=True;TrustServerCertificate=True;"
   },
   "Jwt": {
     "Issuer": "RaceDay",
-    "Audience": "RaceDayClients",
-    "Key": "replace-with-a-long-random-development-secret-at-least-32-characters"
+    "Audience": "RaceDayClients"
   },
-  "UseInMemoryDatabase": false,
-  "Logging": {
-    "LogLevel": {
-      "Default": "Information",
-      "Microsoft.AspNetCore": "Warning"
-    }
+  "AzureBlobStorage": {
+    "ConnectionString": "",
+    "ContainerName": "raceday-media"
   }
 }
