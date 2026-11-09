@@ -1,4 +1,4 @@
-name: RaceDay Part 3 CI
+name: RaceDay CI
 
 on:
   push:
@@ -7,25 +7,123 @@ on:
     branches: [main, master, part-2-rest-api, part-3-mvc-webapp]
   workflow_dispatch:
 
+permissions:
+  contents: read
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
+
 jobs:
-  build-test:
+  build-and-test:
+    name: Build and test
     runs-on: ubuntu-latest
     steps:
       - name: Checkout source
         uses: actions/checkout@v4
-      - name: Setup .NET 8
+
+      - name: Set up .NET 8
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 8.0.x
-      - name: Restore API tests
-        run: dotnet restore RaceDay.Tests/RaceDay.Tests.csproj
-      - name: Build API and tests
-        run: dotnet build RaceDay.Tests/RaceDay.Tests.csproj --configuration Release --no-restore
+
+      - name: Restore solution
+        run: dotnet restore RaceDay.sln
+
+      - name: Build solution
+        run: dotnet build RaceDay.sln --configuration Release --no-restore
+
       - name: Run API integration tests
-        run: dotnet test RaceDay.Tests/RaceDay.Tests.csproj --configuration Release --no-build --no-restore --logger "console;verbosity=normal"
-      - name: Restore MVC
-        run: dotnet restore RaceDay.Mvc/RaceDay.Mvc.csproj
-      - name: Build MVC
-        run: dotnet build RaceDay.Mvc/RaceDay.Mvc.csproj --configuration Release --no-restore
-      - name: Build MVC Docker image
-        run: docker build -t raceday-mvc:ci .
+        run: >
+          dotnet test RaceDay.Tests/RaceDay.Tests.csproj
+          --configuration Release --no-build --no-restore
+          --logger "trx;LogFileName=api-tests.trx"
+          --results-directory TestResults
+
+      - name: Run MVC integration tests
+        run: >
+          dotnet test RaceDay.Mvc.Tests/RaceDay.Mvc.Tests.csproj
+          --configuration Release --no-build --no-restore
+          --logger "trx;LogFileName=mvc-tests.trx"
+          --results-directory TestResults
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: TestResults
+          if-no-files-found: ignore
+
+  database-migration:
+    name: SQL Server migration check
+    runs-on: ubuntu-latest
+    needs: build-and-test
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Set up .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Generate a throwaway SQL password
+        run: echo "SQL_PASSWORD=Ra1!$(openssl rand -hex 12)" >> "$GITHUB_ENV"
+
+      - name: Start SQL Server
+        run: |
+          docker run -d --name raceday-sqlserver-ci \
+            -e ACCEPT_EULA=Y \
+            -e MSSQL_SA_PASSWORD="$SQL_PASSWORD" \
+            -p 1433:1433 \
+            mcr.microsoft.com/mssql/server:2022-latest
+
+      - name: Wait for SQL Server
+        run: |
+          for attempt in $(seq 1 40); do
+            if docker exec raceday-sqlserver-ci \
+              /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "$SQL_PASSWORD" -C -Q "SELECT 1" >/dev/null 2>&1; then
+              echo "SQL Server is ready."
+              exit 0
+            fi
+            sleep 3
+          done
+          echo "SQL Server did not become ready." >&2
+          docker logs raceday-sqlserver-ci
+          exit 1
+
+      - name: Restore EF Core tool
+        run: dotnet tool restore
+
+      - name: Apply EF Core migrations
+        run: >
+          dotnet ef database update
+          --project RaceDay.Api/RaceDay.Api.csproj
+          --startup-project RaceDay.Api/RaceDay.Api.csproj
+          --connection "Server=localhost,1433;Database=RaceDayCI;User Id=sa;Password=$SQL_PASSWORD;TrustServerCertificate=True;Encrypt=False"
+
+      - name: Verify migrated schema
+        run: |
+          docker exec raceday-sqlserver-ci \
+            /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "$SQL_PASSWORD" -C -d RaceDayCI -b \
+            -Q "IF OBJECT_ID('dbo.Events') IS NULL THROW 50000, 'Events table missing', 1; IF NOT EXISTS (SELECT 1 FROM __EFMigrationsHistory) THROW 50000, 'No migration history', 1; SELECT COUNT(*) AS AppliedMigrations FROM __EFMigrationsHistory;"
+
+      - name: Stop SQL Server
+        if: always()
+        run: docker rm -f raceday-sqlserver-ci || true
+
+  docker-images:
+    name: Docker image builds
+    runs-on: ubuntu-latest
+    needs: build-and-test
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Build API image
+        run: docker build --file RaceDay.Api/Dockerfile --tag raceday-api:ci .
+
+      - name: Build MVC image
+        run: docker build --file RaceDay.Mvc/Dockerfile --tag raceday-mvc:ci .

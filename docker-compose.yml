@@ -1,14 +1,80 @@
+name: raceday
+
+# SQL Server + RaceDay API + RaceDay MVC.
+# Copy .env.example to .env and set both secrets before running `docker compose up`.
 services:
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: raceday-sqlserver
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_PID: "Developer"
+      MSSQL_SA_PASSWORD: "${SQLSERVER_SA_PASSWORD:?Set SQLSERVER_SA_PASSWORD in .env}"
+    volumes:
+      - mssql-data:/var/opt/mssql
+    healthcheck:
+      test:
+        - "CMD-SHELL"
+        - "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P \"$$MSSQL_SA_PASSWORD\" -C -Q 'SELECT 1' -b -o /dev/null || /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P \"$$MSSQL_SA_PASSWORD\" -Q 'SELECT 1' -b -o /dev/null"
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+    restart: unless-stopped
+
+  raceday-api:
+    build:
+      context: .
+      dockerfile: RaceDay.Api/Dockerfile
+    image: raceday-api:local
+    container_name: raceday-api
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_URLS: http://+:8080
+      ConnectionStrings__RaceDay: "Server=sqlserver,1433;Database=RaceDayDB;User Id=sa;Password=${SQLSERVER_SA_PASSWORD};TrustServerCertificate=True;Encrypt=False"
+      Jwt__Key: "${JWT_SIGNING_KEY:?Set JWT_SIGNING_KEY in .env (32+ characters)}"
+      Jwt__Issuer: RaceDay
+      Jwt__Audience: RaceDayClients
+      Database__AutoMigrate: "true"
+      Database__MigrateMaxAttempts: "20"
+      Database__MigrateRetrySeconds: "5"
+      Https__Redirect: "false"
+      Swagger__Enabled: "true"
+      Media__Provider: Local
+      Media__LocalPath: /app/App_Data/media
+      # Absolute URL returned to the browser when it renders an uploaded image.
+      Media__PublicBaseUrl: "${RACEDAY_PUBLIC_API_URL:-http://localhost:8081}"
+    volumes:
+      - raceday-media:/app/App_Data/media
+    ports:
+      - "8081:8080"
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+    restart: unless-stopped
+
   raceday-mvc:
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: RaceDay.Mvc/Dockerfile
+    image: raceday-mvc:local
     container_name: raceday-mvc
-    ports:
-      - "8080:8080"
     environment:
       ASPNETCORE_ENVIRONMENT: Production
-      RaceDayApi__BaseUrl: ${RACEDAY_API_URL:-http://host.docker.internal:5171/}
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
+      ASPNETCORE_URLS: http://+:8080
+      RaceDayApi__BaseUrl: http://raceday-api:8080/
+      RaceDayApi__TimeoutSeconds: "30"
+      # Local Compose serves plain HTTP. Terminate TLS at a reverse proxy and
+      # remove this override before exposing the stack publicly.
+      Session__SecureCookies: "false"
+      Https__Redirect: "false"
+    ports:
+      - "8080:8080"
+    depends_on:
+      raceday-api:
+        condition: service_healthy
     restart: unless-stopped
+
+volumes:
+  mssql-data:
+  raceday-media:

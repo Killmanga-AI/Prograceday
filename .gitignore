@@ -11,3 +11,6 @@ RaceDay_Part2_Implementation.zip
 *.zip
 appsettings.Production.json
 secrets.json
+App_Data/
+TestResults/
+*.trx
