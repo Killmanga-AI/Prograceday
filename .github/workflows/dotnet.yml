@@ -70,7 +70,10 @@ jobs:
           dotnet-version: 8.0.x
 
       - name: Generate a throwaway SQL password
-        run: echo "SQL_PASSWORD=Ra1!$(openssl rand -hex 12)" >> "$GITHUB_ENV"
+        run: |
+          SQL_PASSWORD="Ra1!$(openssl rand -hex 12)"
+          echo "::add-mask::$SQL_PASSWORD"
+          echo "SQL_PASSWORD=$SQL_PASSWORD" >> "$GITHUB_ENV"
 
       - name: Start SQL Server
         run: |
@@ -103,6 +106,8 @@ jobs:
           --project RaceDay.Api/RaceDay.Api.csproj
           --startup-project RaceDay.Api/RaceDay.Api.csproj
           --connection "Server=localhost,1433;Database=RaceDayCI;User Id=sa;Password=$SQL_PASSWORD;TrustServerCertificate=True;Encrypt=False"
+        env:
+          Jwt__Key: "ci-only-signing-key-not-used-for-data-protection-32-characters"
 
       - name: Verify migrated schema
         run: |
